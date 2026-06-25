@@ -11,7 +11,9 @@ with different model weights, tools, and parameters.
 
 import warnings
 import os
+import sys
 import argparse
+sys.stdout.reconfigure(encoding='utf-8')
 from pyngrok import ngrok
 import threading
 import uvicorn
@@ -23,7 +25,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from medrax.models import ModelFactory
 
 from interface import create_demo
-from api import create_api
+import api
 from medrax.agent import *
 from medrax.tools import *
 from medrax.utils import *
@@ -218,42 +220,23 @@ def initialize_agent(
     return agent, tools_dict
 
 
-def run_gradio_interface(agent, tools_dict, host="0.0.0.0", port=8686, 
-                        auth=None, share=False):
+def run_gradio_interface(agent, tools_dict, host="0.0.0.0", port=8686, auth=None, share=False):
     """
-    Run the Gradio web interface.
-
-    Args:
-        agent: The initialized MedRAX agent
-        tools_dict: Dictionary of available tools
-        host (str): Host to bind the server to
-        port (int): Port to run the server on
-        auth: Authentication credentials (tuple)
-        share (bool): Whether to create a shareable public link
+    Run the FastAPI backend server instead of Gradio.
     """
-    print(f"Starting Gradio interface on {host}:{port}")
+    import uvicorn
+    import api
     
-    if auth:
-        print(f"🔐 Authentication enabled for user: {auth[0]}")
-    else:
-        print("⚠️  Running without authentication (public access)")
+    # Inject our engine state into the API
+    api.AGENT = agent
+    api.TOOLS_DICT = tools_dict
     
-    if share:
-        print("🌍 Creating shareable public link (expires in 1 week)...")
+    print("🚀 AffiongAI Backend API is starting...")
+    print(f"* API running on local URL: http://{host}:{port}")
+    print(f"* Swagger Docs available at: http://{host}:{port}/docs")
     
-    demo = create_demo(agent, tools_dict)
-    
-    # Prepare launch parameters
-    launch_kwargs = {
-        "server_name": host,
-        "server_port": port,
-        "share": share
-    }
-    
-    if auth:
-        launch_kwargs["auth"] = auth
-        
-    demo.launch(**launch_kwargs)
+    # Run Uvicorn server
+    uvicorn.run(api.app, host=host, port=port)
 
 
 def run_api_server(agent, tools_dict, host="0.0.0.0", port=8585, public=False):

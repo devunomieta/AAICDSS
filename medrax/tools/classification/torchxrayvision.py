@@ -144,7 +144,7 @@ class TorchXRayVisionClassifierTool(BaseTool):
             self.model.train()
             mc_preds = []
             with torch.inference_mode():
-                for _ in range(10): # 10 passes for uncertainty estimation
+                for _ in range(5): # 5 passes for uncertainty estimation (optimized from 10)
                     mc_preds.append(self.model(img).cpu()[0].numpy())
             self.model.eval()
             
@@ -156,10 +156,12 @@ class TorchXRayVisionClassifierTool(BaseTool):
             top_class_idx = int(np.argmax(preds.numpy()))
             top_class_name = xrv.datasets.default_pathologies[top_class_idx]
             
-            from captum.attr import IntegratedGradients
+            from captum.attr import IntegratedGradients, LayerGradCam, LayerAttribution
+            
+            # --- Integrated Gradients ---
             ig = IntegratedGradients(self.model)
             img.requires_grad_()
-            attr = ig.attribute(img, target=top_class_idx, n_steps=20)
+            attr = ig.attribute(img, target=top_class_idx, n_steps=10) # Optimized from 20 to 10
             
             # generate heatmap image
             attr_np = np.abs(attr.squeeze().cpu().detach().numpy())
@@ -168,17 +170,33 @@ class TorchXRayVisionClassifierTool(BaseTool):
             
             # overlay on original image
             orig_img = Image.open(image_path).convert("L")
-            orig_img = orig_img.resize((224, 224)) # default XRV crop size
+            # FIX: Resize original image to match the exact shape of the attribution map
+            orig_img = orig_img.resize((attr_np.shape[1], attr_np.shape[0]))
             orig_arr = np.array(orig_img) / 255.0
             
             heatmap = cm.jet(attr_np)[:, :, :3]
             overlay = 0.5 * heatmap + 0.5 * np.stack((orig_arr,)*3, axis=-1)
             
-            # save the heatmap
             heatmap_dir = os.path.join(os.path.dirname(image_path), "heatmaps")
             os.makedirs(heatmap_dir, exist_ok=True)
             heatmap_path = os.path.join(heatmap_dir, f"ig_{uuid.uuid4().hex}.png")
             plt.imsave(heatmap_path, overlay)
+            
+            # --- Grad-CAM ---
+            try:
+                target_layer = self.model.features[-1]
+                layer_gc = LayerGradCam(self.model, target_layer)
+                gc_attr = layer_gc.attribute(img, target=top_class_idx)
+                gc_attr = LayerAttribution.interpolate(gc_attr, attr_np.shape)
+                gc_attr_np = np.abs(gc_attr.squeeze().cpu().detach().numpy())
+                gc_attr_np = (gc_attr_np - np.min(gc_attr_np)) / (np.max(gc_attr_np) - np.min(gc_attr_np) + 1e-8)
+                gc_heatmap = cm.jet(gc_attr_np)[:, :, :3]
+                gc_overlay = 0.5 * gc_heatmap + 0.5 * np.stack((orig_arr,)*3, axis=-1)
+                gc_heatmap_path = os.path.join(heatmap_dir, f"gc_{uuid.uuid4().hex}.png")
+                plt.imsave(gc_heatmap_path, gc_overlay)
+            except Exception as e:
+                print(f"GradCAM Error: {e}")
+                gc_heatmap_path = None
 
             output = dict(zip(xrv.datasets.default_pathologies, preds.numpy()))
             uncertainty_output = dict(zip(xrv.datasets.default_pathologies, uncertainty_scores))
@@ -189,6 +207,7 @@ class TorchXRayVisionClassifierTool(BaseTool):
                 "note": "Probabilities range from 0 to 1, with higher values indicating higher likelihood of the condition.",
                 "uncertainty_scores": uncertainty_output,
                 "heatmap_path": heatmap_path,
+                "gradcam_path": gc_heatmap_path,
                 "explained_class": top_class_name,
                 "explained_class_prob": float(preds.numpy()[top_class_idx]),
             }
