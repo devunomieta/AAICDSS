@@ -1,12 +1,19 @@
-import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
+import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { Activity, BarChart2, Database, MessageSquare, Settings, Bell, LogOut, Info } from 'lucide-react';
 import DiagnosticWorkstation from './pages/DiagnosticWorkstation';
 import Dashboard from './pages/Dashboard';
 import Feedback from './pages/Feedback';
 import SettingsPage from './pages/Settings';
 import Updates from './pages/Updates';
+import Login from './pages/Login';
 
-function Sidebar() {
+interface SidebarProps {
+  onLogout: () => void;
+  userRole: 'radiologist' | 'compliance' | null;
+}
+
+function Sidebar({ onLogout, userRole }: SidebarProps) {
   const location = useLocation();
   const isActive = (path: string) => location.pathname === path || (path === '/dashboard' && location.pathname === '/');
   
@@ -55,7 +62,10 @@ function Sidebar() {
           <Settings size={20} />
           <span className="font-medium">System Settings</span>
         </Link>
-        <button className="flex items-center gap-3 px-4 py-3 text-red-400 hover:bg-red-400/10 rounded-lg transition-colors w-full text-left mt-1">
+        <button 
+          onClick={onLogout}
+          className="flex items-center gap-3 px-4 py-3 text-red-400 hover:bg-red-400/10 rounded-lg transition-colors w-full text-left mt-1"
+        >
           <LogOut size={20} />
           <span className="font-medium">Sign Out</span>
         </button>
@@ -65,10 +75,27 @@ function Sidebar() {
 }
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userRole, setUserRole] = useState<'radiologist' | 'compliance' | null>(null);
+
+  const handleLogin = (role: 'radiologist' | 'compliance') => {
+    setUserRole(role);
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setUserRole(null);
+  };
+
+  if (!isAuthenticated) {
+    return <Login onLogin={handleLogin} />;
+  }
+
   return (
     <BrowserRouter>
       <div className="flex bg-surface min-h-screen">
-        <Sidebar />
+        <Sidebar onLogout={handleLogout} userRole={userRole} />
         <main className="ml-64 flex-1 p-8 h-screen overflow-y-auto">
           <Routes>
             <Route path="/" element={<Dashboard />} />
@@ -77,6 +104,7 @@ function App() {
             <Route path="/feedback" element={<Feedback />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/updates" element={<Updates />} />
+            <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </main>
       </div>
