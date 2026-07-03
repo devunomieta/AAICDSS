@@ -1,6 +1,8 @@
 import React, { useState, useRef, DragEvent } from 'react';
 import { Upload, FileImage, AlertTriangle, CheckCircle, Brain, Activity, X } from 'lucide-react';
 import axios from 'axios';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface BatchItem {
   id: string;
@@ -453,13 +455,11 @@ export default function DiagnosticWorkstation() {
             </h3>
             
             {activeItem?.status === 'completed' ? (
-              <div 
-                className="prose prose-invert max-w-none text-sm text-gray-300 whitespace-pre-wrap"
-                dangerouslySetInnerHTML={{ 
-                  __html: (activeItem.results?.report || "*Report streaming unavailable.*")
-                          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') 
-                }}
-              />
+              <div className="prose prose-invert max-w-none text-sm text-gray-300">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {activeItem.results?.report || "*Report streaming unavailable.*"}
+                </ReactMarkdown>
+              </div>
             ) : activeItem?.status === 'processing' || activeItem?.status === 'uploading' ? (
               <div className="flex flex-col items-center justify-center flex-1 gap-6 w-full">
                 {/* Visual Indicators & Timers */}
@@ -518,75 +518,111 @@ export default function DiagnosticWorkstation() {
           </div>
 
           {/* Scan Viewer (Moved to Bottom) */}
-          <div className="bg-background border border-border rounded-xl p-1 flex-1 relative overflow-hidden flex items-center justify-center group">
+          <div className="bg-background border border-border rounded-xl flex-1 flex flex-col relative overflow-hidden group">
             
-            {/* Heatmap Toggle */}
+            {/* Top Toolbar (Heatmap Toggle) */}
             {activeItem && activeItem.status === 'completed' && (
-              <div className="absolute top-4 right-4 bg-surface/90 backdrop-blur border border-border rounded-lg p-1 flex gap-1 z-20 shadow-lg">
-                <button 
-                  onClick={() => setHeatmapView('original')}
-                  className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${heatmapView === 'original' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-surface'}`}
-                >
-                  Original
-                </button>
-                <button 
-                  onClick={() => setHeatmapView('ig')}
-                  disabled={!activeItem.results?.ig_heatmap}
-                  className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${heatmapView === 'ig' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-surface disabled:opacity-50 disabled:cursor-not-allowed'}`}
-                >
-                  IG Heatmap
-                </button>
-                <button 
-                  onClick={() => setHeatmapView('gradcam')}
-                  disabled={!activeItem.results?.gradcam_heatmap}
-                  className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${heatmapView === 'gradcam' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-surface disabled:opacity-50 disabled:cursor-not-allowed'}`}
-                >
-                  Grad-CAM
-                </button>
+              <div className="bg-surface/50 border-b border-border p-2 flex justify-end items-center z-20">
+                <div className="bg-background border border-border rounded-lg p-1 flex gap-1 shadow-sm">
+                  <button 
+                    onClick={() => setHeatmapView('original')}
+                    className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${heatmapView === 'original' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-surface'}`}
+                  >
+                    Original
+                  </button>
+                  <button 
+                    onClick={() => setHeatmapView('ig')}
+                    disabled={!activeItem.results?.ig_heatmap}
+                    className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${heatmapView === 'ig' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-surface disabled:opacity-50 disabled:cursor-not-allowed'}`}
+                  >
+                    IG Heatmap
+                  </button>
+                  <button 
+                    onClick={() => setHeatmapView('gradcam')}
+                    disabled={!activeItem.results?.gradcam_heatmap}
+                    className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${heatmapView === 'gradcam' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-surface disabled:opacity-50 disabled:cursor-not-allowed'}`}
+                  >
+                    Grad-CAM
+                  </button>
+                </div>
               </div>
             )}
 
-            {activeItem ? (
-              <img 
-                src={
-                  heatmapView === 'ig' && activeItem.results?.ig_heatmap 
-                    ? `http://localhost:8686/${activeItem.results.ig_heatmap}` 
-                    : heatmapView === 'gradcam' && activeItem.results?.gradcam_heatmap
-                      ? `http://localhost:8686/${activeItem.results.gradcam_heatmap}`
-                      : URL.createObjectURL(activeItem.file)
-                } 
-                alt="Scan viewer" 
-                className="max-w-full max-h-full object-contain"
-              />
-            ) : (
-              <div className="text-textMuted flex flex-col items-center">
-                <Brain size={48} className="mb-4 opacity-20" />
-                <p>Select a scan from the image queue to view</p>
+            {/* Image Container */}
+            <div className="flex-1 relative flex items-center justify-center p-2 min-h-0 bg-black/20">
+              {activeItem ? (
+                <img 
+                  src={
+                    heatmapView === 'ig' && activeItem.results?.ig_heatmap 
+                      ? `http://localhost:8686/${activeItem.results.ig_heatmap}` 
+                      : heatmapView === 'gradcam' && activeItem.results?.gradcam_heatmap
+                        ? `http://localhost:8686/${activeItem.results.gradcam_heatmap}`
+                        : URL.createObjectURL(activeItem.file)
+                  } 
+                  alt="Scan viewer" 
+                  className="max-w-full max-h-full object-contain"
+                />
+              ) : (
+                <div className="text-textMuted flex flex-col items-center">
+                  <Brain size={48} className="mb-4 opacity-20" />
+                  <p>Select a scan from the image queue to view</p>
+                </div>
+              )}
+            </div>
+            
+            {/* Legends Overlay */}
+            {activeItem && activeItem.status === 'completed' && heatmapView !== 'original' && (
+              <div className="absolute bottom-20 right-4 bg-surface/95 backdrop-blur-md border border-border p-3 rounded-lg shadow-xl text-xs z-20 w-48">
+                <p className="font-bold text-gray-200 mb-2 border-b border-border/50 pb-1.5">
+                  {heatmapView === 'ig' ? 'IG Heatmap Legend' : 'Grad-CAM Legend'}
+                </p>
+                {heatmapView === 'ig' ? (
+                  <div className="space-y-2.5 mt-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-sm bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]"></div>
+                      <span className="text-gray-300 font-medium">Positive Evidence</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-sm bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"></div>
+                      <span className="text-gray-300 font-medium">Negative Evidence</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2 mt-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-full h-3 rounded-sm bg-gradient-to-r from-blue-500 via-green-500 to-red-500"></div>
+                    </div>
+                    <div className="flex justify-between text-gray-400 font-medium">
+                      <span>Low</span>
+                      <span>High Activation</span>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
             
-            {/* Validation Floating Bar */}
-            {activeItem && activeItem.status === 'completed' && !activeItem.validationStatus && (
-              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-surface/90 backdrop-blur border border-border px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={() => handleValidation('accept')} className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2">
-                  <CheckCircle size={16} /> Accept
-                </button>
-                <div className="w-px h-8 bg-border"></div>
-                <button onClick={() => handleValidation('override')} className="bg-red-900/50 hover:bg-red-600 text-red-100 border border-red-800 hover:border-red-500 px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-colors">
-                  <AlertTriangle size={16} /> Override
-                </button>
+            {/* Validation Action Footer */}
+            {activeItem && activeItem.status === 'completed' && (
+              <div className="bg-surface/50 border-t border-border p-3 flex justify-center items-center gap-4 z-20">
+                {!activeItem.validationStatus ? (
+                  <>
+                    <button onClick={() => handleValidation('accept')} className="bg-green-600 hover:bg-green-500 text-white px-6 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-lg shadow-green-900/20 transition-all hover:-translate-y-0.5">
+                      <CheckCircle size={16} /> Accept Diagnosis
+                    </button>
+                    <button onClick={() => handleValidation('override')} className="bg-red-900/50 hover:bg-red-600 text-red-100 border border-red-800 hover:border-red-500 px-6 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-all hover:-translate-y-0.5">
+                      <AlertTriangle size={16} /> Override
+                    </button>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2 px-6 py-2 bg-background/80 rounded-lg border border-border shadow-inner">
+                    {activeItem.validationStatus === 'accepted' ? (
+                      <span className="text-green-400 flex items-center gap-2 font-medium text-sm"><CheckCircle size={16} /> Diagnosis Accepted</span>
+                    ) : (
+                      <span className="text-red-400 flex items-center gap-2 font-medium text-sm"><AlertTriangle size={16} /> Diagnosis Overridden</span>
+                    )}
+                  </div>
+                )}
               </div>
-            )}
-            
-            {/* Validation Status Indicator */}
-            {activeItem && activeItem.status === 'completed' && activeItem.validationStatus && (
-               <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-surface/90 backdrop-blur border border-border px-6 py-3 rounded-2xl shadow-xl flex items-center gap-3">
-                 {activeItem.validationStatus === 'accepted' ? (
-                   <span className="text-green-400 flex items-center gap-2 font-medium text-sm"><CheckCircle size={16} /> Diagnosis Accepted</span>
-                 ) : (
-                   <span className="text-red-400 flex items-center gap-2 font-medium text-sm"><AlertTriangle size={16} /> Diagnosis Overridden</span>
-                 )}
-               </div>
             )}
           </div>
 
