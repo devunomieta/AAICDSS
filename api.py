@@ -6,9 +6,13 @@ import uuid
 import requests
 from pathlib import Path
 from fastapi import FastAPI, File, UploadFile, Form, BackgroundTasks
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from typing import List
+from typing import List, Optional, Any, Dict
+import psutil
+from datetime import datetime
+from cases_db import get_cases, get_case, create_case, update_case_results, delete_case, get_deleted_cases
 
 app = FastAPI(title="AffiongAI CDSS Backend API")
 
@@ -24,13 +28,24 @@ app.add_middleware(
 # We will inject these globally from main.py
 AGENT = None
 TOOLS_DICT = {}
-UPLOAD_DIR = Path("temp")
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+UPLOAD_DIR = Path("uploads")
+UPLOAD_DIR.mkdir(exist_ok=True)
+
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
 FEEDBACK_FILE = "active_learning_feedback.json"
 
+@app.post("/api/init_case")
+async def init_case(case_id: str = Form(...), upload_type: str = Form(...)):
+    """Initializes a case in the database immediately upon session start."""
+    create_case(case_id, upload_type)
+    return {"message": f"Case {case_id} initialized"}
+
 @app.post("/api/upload")
-async def upload_scans(files: List[UploadFile] = File(...)):
+async def upload_scans(case_id: str = Form(...), upload_type: str = Form(...), files: List[UploadFile] = File(...)):
     """Receives batch uploads and saves them to the temp directory."""
+    create_case(case_id, upload_type)
+    
     saved_paths = []
     for file in files:
         ext = os.path.splitext(file.filename)[1]
@@ -38,7 +53,92 @@ async def upload_scans(files: List[UploadFile] = File(...)):
         with open(safe_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
         saved_paths.append(safe_path)
+    
+    # Update cases with the images
+    case = get_case(case_id)
+    if case:
+        current_images = case['results'].get('images', [])
+        current_images.extend(saved_paths)
+        update_case_results(case_id, {'images': current_images}, 'processing')
+        
     return {"message": f"Successfully uploaded {len(saved_paths)} scans", "paths": saved_paths}
+
+@app.get("/api/cases")
+async def fetch_cases():
+    cases = get_cases()
+    return {"cases": cases}
+
+@app.get("/api/cases/{case_id}")
+async def fetch_case(case_id: str):
+    case = get_case(case_id)
+    if case:
+        return case
+    return JSONResponse(status_code=404, content={"error": "Case not found"})
+
+@app.post("/api/cases/{case_id}/delete")
+async def delete_case_api(case_id: str, deleted_by: str = Form(...), user_role: str = Form(...), reason: str = Form("")):
+    case = get_case(case_id)
+    if not case:
+        return JSONResponse(status_code=404, content={"error": "Case not found"})
+        
+    if user_role == "radiologist" and case["status"] != "pending":
+        return JSONResponse(status_code=403, content={"error": "Radiologists can only delete pending cases."})
+        
+    success = delete_case(case_id, deleted_by, reason)
+    if success:
+        return {"message": "Case deleted successfully"}
+    return JSONResponse(status_code=500, content={"error": "Failed to delete case"})
+
+@app.get("/api/deleted_cases")
+async def fetch_deleted_cases():
+    return {"deleted_cases": get_deleted_cases()}
+
+@app.get("/api/analytics")
+async def fetch_analytics():
+    cases = get_cases()
+    
+    # Calculate Monthly Scans
+    current_month = datetime.now().month
+    current_year = datetime.now().year
+    
+    monthly_scans = 0
+    annual_volume = [0] * 12
+    
+    for case in cases:
+        try:
+            case_date = datetime.fromisoformat(case['timestamp'])
+            images_count = len(case.get('results', {}).get('images', []))
+            
+            if case_date.year == current_year:
+                annual_volume[case_date.month - 1] += images_count
+                if case_date.month == current_month:
+                    monthly_scans += images_count
+        except:
+            pass
+            
+    # Calculate pending feedback
+    pending_feedback = 0
+    if os.path.exists(FEEDBACK_FILE):
+        try:
+            with open(FEEDBACK_FILE, 'r') as f:
+                feedback_data = json.load(f)
+                pending_feedback = sum(1 for item in feedback_data if item.get('status') == 'Pending Compliance Review')
+        except:
+            pass
+            
+    # RAM Usage
+    ram = psutil.virtual_memory()
+    ram_used_gb = round(ram.used / (1024 ** 3), 1)
+    ram_total_gb = round(ram.total / (1024 ** 3), 1)
+    
+    return {
+        "monthly_scans": monthly_scans,
+        "annual_volume": annual_volume,
+        "pending_compliance": pending_feedback,
+        "ram_used_gb": ram_used_gb,
+        "ram_total_gb": ram_total_gb,
+        "avg_inference_time": "24.5s" # System wide mock metric for now since individual image inference is not timed.
+    }
 
 @app.post("/api/infer")
 async def run_inference(image_path: str = Form(...)):
@@ -69,7 +169,7 @@ async def run_inference(image_path: str = Form(...)):
         return {"error": str(e)}
 
 @app.post("/api/report")
-async def generate_clinical_report(preds: str = Form(...), uncertainties: str = Form(...)):
+async def generate_clinical_report(preds: str = Form(...), uncertainties: str = Form(...), case_id: Optional[str] = Form(None)):
     """Streams a clinical report from the local Ollama LLM."""
     prompt = f"""
     You are an expert AI Radiologist for AffiongAI CDSS. 
@@ -84,22 +184,33 @@ async def generate_clinical_report(preds: str = Form(...), uncertainties: str = 
     
     Format the output in clean Markdown with:
     - **Primary Findings**: (List the most likely diseases with Confirmed/Absent status)
-    - **Confidence & Uncertainty**: (Translate the variance into Low/Moderate/High Uncertainty)
-    - **Target Pathology Focus**: (Explicitly mention Pneumonia, TB, and Pleural Effusion statuses)
+    - **Confidence & Uncertainty**: (Translate the variance into Low/Moderate/High Uncertainty AND include the exact estimated percentage values of Confidence and Uncertainty based on the scores)
     - **Recommendation**: (Brief clinical recommendation)
     
-    Do not output raw JSON, only the professional clinical text.
+    CRITICAL RULES:
+    1. Do not use introductory phrases such as "The primary findings from the AI radiological analysis suggest:" or similar preambles.
+    2. Start the recommendation directly. Do not use phrases like "Based on these findings,".
+    3. Do not output raw JSON, only the professional clinical text.
     """
     
     def ollama_streamer():
         url = "http://localhost:11434/api/generate"
         payload = {"model": "llama3", "prompt": prompt, "stream": True}
+        reportText = ""
         try:
             response = requests.post(url, json=payload, stream=True)
             for line in response.iter_lines():
                 if line:
                     data = json.loads(line)
-                    yield data.get("response", "")
+                    chunk = data.get("response", "")
+                    reportText += chunk
+                    yield chunk
+            
+            if case_id:
+                case = get_case(case_id)
+                if case:
+                    update_case_results(case_id, {'report': reportText}, 'completed')
+                    
         except Exception as e:
             yield f"\n\n[Error communicating with local LLM: {str(e)}]"
             

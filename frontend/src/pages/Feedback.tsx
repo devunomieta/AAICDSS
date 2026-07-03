@@ -1,7 +1,11 @@
 import React from 'react';
 import { MessageSquare, ShieldAlert, CheckCircle, Clock } from 'lucide-react';
 
-export default function Feedback() {
+interface FeedbackProps {
+  userRole: 'radiologist' | 'compliance' | null;
+}
+
+export default function Feedback({ userRole }: FeedbackProps) {
   const mockQueue = [
     { id: 'SC-9241', patient: 'Anonymous', aiPred: 'Pneumonia (0.89)', radDec: 'Accepted', status: 'Retraining Ready' },
     { id: 'SC-9242', patient: 'Anonymous', aiPred: 'Normal (0.92)', radDec: 'Overridden: Trace Effusion', status: 'Pending Compliance' },
@@ -39,9 +43,9 @@ export default function Feedback() {
                   {item.status}
                 </span>
               </div>
-              <div className="text-right">
+              <div className="text-right" title={userRole !== 'compliance' ? "Compliance Officer access required" : ""}>
                 <button 
-                  disabled={item.status !== 'Pending Compliance'}
+                  disabled={item.status !== 'Pending Compliance' || userRole !== 'compliance'}
                   className="bg-primary hover:bg-primaryHover disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed text-white px-4 py-1.5 rounded text-sm font-medium transition-colors"
                 >
                   Approve for Retrain

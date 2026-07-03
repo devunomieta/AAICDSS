@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Activity, Fingerprint, Mail, Lock, ShieldAlert } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import aLogo from '../assets/A-Logo.png';
+import { useToast } from '../components/ToastContext';
 
 interface LoginProps {
   onLogin: (userType: 'radiologist' | 'compliance') => void;
@@ -10,6 +11,7 @@ interface LoginProps {
 export default function Login({ onLogin }: LoginProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const { showToast } = useToast();
 
   const autofill = (type: 'radiologist' | 'compliance') => {
     if (type === 'radiologist') {
@@ -31,7 +33,7 @@ export default function Login({ onLogin }: LoginProps) {
   };
 
   const showFutureWarning = () => {
-    alert("Future Update: SSO and Biometric access will be integrated in v3.0");
+    showToast("Future Update: SSO and Biometric access will be integrated in v3.0");
   };
 
   return (

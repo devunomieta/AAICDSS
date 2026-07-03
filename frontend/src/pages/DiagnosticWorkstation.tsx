@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { Upload, FileImage, AlertTriangle, CheckCircle, Brain, Activity } from 'lucide-react';
+import React, { useState, useRef, DragEvent } from 'react';
+import { Upload, FileImage, AlertTriangle, CheckCircle, Brain, Activity, X } from 'lucide-react';
 import axios from 'axios';
 
 interface BatchItem {
@@ -20,19 +20,89 @@ export default function DiagnosticWorkstation() {
   const [batch, setBatch] = useState<BatchItem[]>([]);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  // New States for Flow
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [sessionCaseId, setSessionCaseId] = useState('');
+  const [sessionUploadType, setSessionUploadType] = useState<'single' | 'batch' | null>(null);
+  const [isSessionActive, setIsSessionActive] = useState(false);
+  
+  // Drag State
+  const [isDragging, setIsDragging] = useState(false);
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const endSession = () => {
+    setSessionCaseId('');
+    setSessionUploadType(null);
+    setIsSessionActive(false);
+    setBatch([]);
+    setActiveIndex(null);
+  };
+
+  const startSession = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!sessionCaseId || !sessionUploadType) return;
+    
+    setIsSessionActive(true);
+    setIsModalOpen(false);
+
+    try {
+      const formData = new FormData();
+      formData.append('case_id', sessionCaseId);
+      formData.append('upload_type', sessionUploadType);
+      await axios.post('http://localhost:8686/api/init_case', formData);
+    } catch (err) {
+      console.error("Failed to initialize case in DB", err);
+    }
+    
+    // Automatically trigger file picker when session starts
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement> | { target: { files: FileList | null } }) => {
     if (e.target.files) {
-      const newFiles = Array.from(e.target.files).map(file => ({
+      let newFiles = Array.from(e.target.files);
+      if (sessionUploadType === 'single') {
+        newFiles = [newFiles[0]];
+      }
+      
+      const mappedFiles = newFiles.map(file => ({
         id: Math.random().toString(36).substring(7),
         file,
         status: 'pending' as const,
         progress: 0,
       }));
-      setBatch(prev => [...prev, ...newFiles]);
-      if (activeIndex === null && newFiles.length > 0) {
+      setBatch(prev => [...prev, ...mappedFiles]);
+      if (activeIndex === null && mappedFiles.length > 0) {
         setActiveIndex(0);
       }
+    }
+    // Reset file input so same file can be selected again
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const onDragOver = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if (isSessionActive) {
+      setIsDragging(true);
+    }
+  };
+
+  const onDragLeave = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const onDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (!isSessionActive) return;
+    
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFileUpload({ target: { files: e.dataTransfer.files } });
     }
   };
 
@@ -40,18 +110,16 @@ export default function DiagnosticWorkstation() {
     if (isProcessing) return;
     setIsProcessing(true);
     
-    // We process sequentially to save RAM (8GB constraint)
     for (let i = 0; i < batch.length; i++) {
       if (batch[i].status !== 'pending') continue;
       
       setActiveIndex(i);
-      
-      // Update status to uploading
       setBatch(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'uploading', progress: 10 } : item));
       
       try {
-        // 1. Upload
         const formData = new FormData();
+        formData.append('case_id', sessionCaseId);
+        formData.append('upload_type', sessionUploadType!);
         formData.append('files', batch[i].file);
         
         const uploadRes = await axios.post('http://localhost:8686/api/upload', formData);
@@ -59,17 +127,16 @@ export default function DiagnosticWorkstation() {
         
         setBatch(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'processing', progress: 40 } : item));
         
-        // 2. Infer
         const inferData = new FormData();
         inferData.append('image_path', serverPath);
         const inferRes = await axios.post('http://localhost:8686/api/infer', inferData);
         
         setBatch(prev => prev.map((item, idx) => idx === i ? { ...item, progress: 80, results: inferRes.data } : item));
         
-        // 3. Report
         const reportData = new FormData();
         reportData.append('preds', JSON.stringify(inferRes.data.predictions));
         reportData.append('uncertainties', JSON.stringify(inferRes.data.uncertainty));
+        reportData.append('case_id', sessionCaseId);
         
         const reportRes = await fetch('http://localhost:8686/api/report', {
           method: 'POST',
@@ -86,7 +153,6 @@ export default function DiagnosticWorkstation() {
             if (done) break;
             reportText += decoder.decode(value);
             
-            // Update the report text in real-time
             setBatch(prev => prev.map((item, idx) => idx === i ? { 
               ...item, 
               results: { ...item.results!, report: reportText } 
@@ -107,45 +173,123 @@ export default function DiagnosticWorkstation() {
   const activeItem = activeIndex !== null ? batch[activeIndex] : null;
 
   return (
-    <div className="flex flex-col h-full gap-6">
+    <div className="flex flex-col h-full gap-6 relative">
       
+      {/* Initialization Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center backdrop-blur-sm">
+          <div className="bg-surface border border-border rounded-xl p-6 w-full max-w-md shadow-2xl relative">
+            <button onClick={() => setIsModalOpen(false)} className="absolute top-4 right-4 text-gray-400 hover:text-white">
+              <X size={20} />
+            </button>
+            <h2 className="text-xl font-bold text-white mb-4">Initialize Upload Session</h2>
+            <form onSubmit={startSession} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Case ID</label>
+                <input 
+                  type="text" 
+                  value={sessionCaseId}
+                  onChange={e => setSessionCaseId(e.target.value)}
+                  placeholder="e.g. CASE-10293"
+                  className="w-full bg-background border border-border rounded-lg p-2.5 text-white focus:ring-primary focus:border-primary"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Upload Type</label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" name="uploadType" value="single" onChange={() => setSessionUploadType('single')} required />
+                    <span className="text-gray-300">Single Scan</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" name="uploadType" value="batch" onChange={() => setSessionUploadType('batch')} required />
+                    <span className="text-gray-300">Batch Scans</span>
+                  </label>
+                </div>
+              </div>
+              <button type="submit" className="w-full bg-primary hover:bg-primaryHover text-white py-2.5 rounded-lg font-medium transition-colors">
+                Start Session
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Hidden File Input */}
+      <input 
+        type="file" 
+        multiple={sessionUploadType === 'batch'}
+        accept="image/*,.dcm" 
+        className="hidden"
+        ref={fileInputRef}
+        onChange={handleFileUpload}
+      />
+
       {/* Header */}
       <div className="flex justify-between items-end">
         <div>
           <h1 className="text-3xl font-bold text-white tracking-tight">Diagnostic Workstation</h1>
-          <p className="text-textMuted mt-1">Batch Analysis & Clinical Reporting</p>
+          <div className="flex items-center gap-4 mt-1">
+            <p className="text-textMuted">
+              {isSessionActive ? `Active Session: ${sessionCaseId} (${sessionUploadType})` : "Batch Analysis & Clinical Reporting"}
+            </p>
+            {isSessionActive && (
+              <button 
+                onClick={endSession}
+                className="text-red-400 hover:text-red-300 text-sm font-medium border border-red-500/30 hover:border-red-400 bg-red-500/10 hover:bg-red-500/20 px-3 py-1 rounded transition-colors"
+              >
+                End Session / Close Case
+              </button>
+            )}
+          </div>
         </div>
-        <div className="relative">
-          <input 
-            type="file" 
-            multiple 
-            accept="image/*,.dcm" 
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            onChange={handleFileUpload}
-          />
-          <button className="bg-primary hover:bg-primaryHover text-white px-6 py-2.5 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-lg shadow-primary/20">
+        {!isSessionActive && (
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="bg-primary hover:bg-primaryHover text-white px-6 py-2.5 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-lg shadow-primary/20"
+          >
             <Upload size={18} />
             <span>Upload Scans</span>
           </button>
-        </div>
+        )}
       </div>
 
       <div className="flex gap-6 flex-1 h-[calc(100vh-140px)]">
         
-        {/* Left Column: Batch Queue */}
+        {/* Left Column: Image Queue */}
         <div className="w-1/3 flex flex-col gap-4">
           <div className="bg-background border border-border rounded-xl p-5 flex-1 flex flex-col">
             <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
               <FileImage size={20} className="text-primary" />
-              Batch Queue
+              Image Queue
             </h2>
             
-            <div className="flex-1 overflow-y-auto pr-2 space-y-3">
+            <div 
+              className={`flex-1 overflow-y-auto pr-2 space-y-3 rounded-lg border-2 border-dashed transition-colors ${
+                isDragging ? 'border-primary bg-primary/10' : 'border-transparent'
+              }`}
+              onDragOver={onDragOver}
+              onDragLeave={onDragLeave}
+              onDrop={onDrop}
+            >
               {batch.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-textMuted border-2 border-dashed border-border rounded-lg bg-surface/50">
-                  <Upload size={40} className="mb-3 opacity-50" />
-                  <p>Drag & drop scans here</p>
-                  <p className="text-sm">Supports DICOM, PNG, JPG</p>
+                <div 
+                  className="h-full flex flex-col items-center justify-center text-textMuted border-2 border-dashed border-border rounded-lg bg-surface/50 cursor-pointer hover:border-gray-500 hover:text-gray-300 transition-colors"
+                  onClick={() => !isSessionActive ? setIsModalOpen(true) : fileInputRef.current?.click()}
+                >
+                  <Upload size={40} className={`mb-3 ${isSessionActive ? 'opacity-100 text-primary' : 'opacity-50'}`} />
+                  {isSessionActive ? (
+                    <>
+                      <p className="font-medium text-white">Drag & drop scans here</p>
+                      <p className="text-sm">Or click to browse</p>
+                    </>
+                  ) : (
+                    <>
+                      <p>Click to initialize upload session</p>
+                    </>
+                  )}
+                  <p className="text-xs mt-2 opacity-50">Supports DICOM, PNG, JPG</p>
                 </div>
               ) : (
                 batch.map((item, idx) => (
@@ -188,16 +332,57 @@ export default function DiagnosticWorkstation() {
               <button 
                 onClick={processQueue}
                 disabled={isProcessing || !batch.some(i => i.status === 'pending')}
-                className="mt-4 w-full bg-surface border border-border hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 rounded-lg text-sm font-medium transition-colors"
+                className={`mt-4 w-full border text-white py-2 rounded-lg text-sm font-medium transition-colors ${
+                  isProcessing 
+                    ? 'bg-surface border-border opacity-50 cursor-not-allowed' 
+                    : batch.some(i => i.status === 'pending') 
+                      ? 'bg-primary border-primary hover:bg-primaryHover shadow-[0_0_15px_rgba(59,130,246,0.3)]' 
+                      : 'bg-surface border-border hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed'
+                }`}
               >
-                {isProcessing ? 'Processing Queue...' : 'Process Pending Queue'}
+                {isProcessing ? 'Processing Queue...' : 'Run Diagnostic Pipeline'}
               </button>
             )}
           </div>
         </div>
 
-        {/* Right Column: Viewer & Results */}
+        {/* Right Column: AI Report (Top) & Viewer (Bottom) */}
         <div className="w-2/3 flex flex-col gap-4">
+          
+          {/* AI Report Box (Moved to Top) */}
+          <div className="bg-background border border-border rounded-xl h-64 p-5 overflow-y-auto shrink-0 flex flex-col">
+            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <Activity size={16} /> AI Diagnostic Report
+            </h3>
+            
+            {activeItem?.status === 'completed' ? (
+              <div 
+                className="prose prose-invert max-w-none text-sm text-gray-300 whitespace-pre-wrap"
+                dangerouslySetInnerHTML={{ 
+                  __html: (activeItem.results?.report || "*Report streaming unavailable.*")
+                          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') 
+                }}
+              />
+            ) : activeItem?.status === 'processing' || activeItem?.status === 'uploading' ? (
+              <div className="flex flex-col items-center justify-center flex-1 gap-4">
+                <div className="relative flex items-center justify-center">
+                  <Brain size={48} className="text-primary animate-pulse opacity-20 absolute" />
+                  <span className="text-2xl font-bold text-white relative z-10">{activeItem.progress}%</span>
+                </div>
+                <div className="text-sm font-medium text-primary animate-pulse">
+                  {activeItem.progress < 40 ? "Uploading scan to server..." : 
+                   activeItem.progress < 80 ? "Running PyTorch CNN Inference..." : 
+                   "Streaming LLaMA-3 Clinical Report..."}
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center flex-1 text-gray-500 text-sm italic">
+                Awaiting pipeline execution to generate report.
+              </div>
+            )}
+          </div>
+
+          {/* Scan Viewer (Moved to Bottom) */}
           <div className="bg-background border border-border rounded-xl p-1 flex-1 relative overflow-hidden flex items-center justify-center group">
             {activeItem ? (
               <img 
@@ -208,7 +393,7 @@ export default function DiagnosticWorkstation() {
             ) : (
               <div className="text-textMuted flex flex-col items-center">
                 <Brain size={48} className="mb-4 opacity-20" />
-                <p>Select a scan from the batch queue to view</p>
+                <p>Select a scan from the image queue to view</p>
               </div>
             )}
             
@@ -226,27 +411,6 @@ export default function DiagnosticWorkstation() {
             )}
           </div>
 
-          {/* AI Report Box */}
-          <div className="bg-background border border-border rounded-xl h-64 p-5 overflow-y-auto">
-            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-              <Activity size={16} /> Thoracic AI Diagnostic Report
-            </h3>
-            
-            {activeItem?.status === 'completed' ? (
-              <div className="prose prose-invert max-w-none text-sm text-gray-300">
-                {activeItem.results?.report || "*Report streaming unavailable.*"}
-              </div>
-            ) : activeItem?.status === 'processing' ? (
-              <div className="flex flex-col items-center justify-center h-32 gap-3 text-primary animate-pulse">
-                <Brain size={32} />
-                <span className="text-sm font-medium">Generating Clinical Report...</span>
-              </div>
-            ) : (
-              <div className="text-gray-500 text-sm italic">
-                Awaiting pipeline execution to generate report.
-              </div>
-            )}
-          </div>
         </div>
 
       </div>
