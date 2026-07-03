@@ -40,5 +40,83 @@
         "action": "User Login",
         "user": "admin",
         "details": "Successfully authenticated via Demo Account"
+    },
+    {
+        "timestamp": 1783089996.3855257,
+        "action": "User Login",
+        "user": "admin",
+        "details": "Successfully authenticated via Demo Account"
+    },
+    {
+        "timestamp": 1783090026.3965545,
+        "action": "User Login",
+        "user": "radiologist",
+        "details": "Successfully authenticated via Demo Account"
+    },
+    {
+        "timestamp": 1783090338.4792588,
+        "action": "User Login",
+        "user": "radiologist",
+        "details": "Successfully authenticated via Demo Account"
+    },
+    {
+        "timestamp": 1783090356.2775004,
+        "action": "Case Started",
+        "user": "radiologist",
+        "details": "Started batch case 030726-(1)-testing"
+    },
+    {
+        "timestamp": 1783090398.2420192,
+        "action": "User Login",
+        "user": "radiologist",
+        "details": "Successfully authenticated via Demo Account"
+    },
+    {
+        "timestamp": 1783090408.4145856,
+        "action": "Case Started",
+        "user": "radiologist",
+        "details": "Started batch case 030726-(2)-testing"
+    },
+    {
+        "timestamp": 1783090601.3745458,
+        "action": "User Login",
+        "user": "radiologist",
+        "details": "Successfully authenticated via Demo Account"
+    },
+    {
+        "timestamp": 1783090621.052687,
+        "action": "Case Deletion",
+        "user": "radiologist",
+        "details": "Deleted case 030726-(1)-testing. Reason: None provided"
+    },
+    {
+        "timestamp": 1783090624.6420872,
+        "action": "Case Deletion",
+        "user": "radiologist",
+        "details": "Deleted case 030726-(2)-testing. Reason: None provided"
+    },
+    {
+        "timestamp": 1783090635.5603902,
+        "action": "Case Started",
+        "user": "radiologist",
+        "details": "Started batch case 030726-(3)-testing"
+    },
+    {
+        "timestamp": 1783091617.1317847,
+        "action": "Diagnosis Accepted",
+        "user": "radiologist",
+        "details": "Case: 030726-(3)-testing - Accepted: Effusion"
+    },
+    {
+        "timestamp": 1783091639.7970679,
+        "action": "Diagnosis Accepted",
+        "user": "radiologist",
+        "details": "Case: 030726-(3)-testing - Accepted: Lung Opacity"
+    },
+    {
+        "timestamp": 1783091642.5483384,
+        "action": "Diagnosis Accepted",
+        "user": "radiologist",
+        "details": "Case: 030726-(3)-testing - Accepted: Infiltration"
     }
 ]

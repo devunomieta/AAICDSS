@@ -6,5 +6,29 @@
         "ai_prediction": "Lung Opacity",
         "radiologist_decision": "Accepted: Lung Opacity",
         "status": "Accepted"
+    },
+    {
+        "timestamp": 1783091617.1075978,
+        "user": "radiologist",
+        "image": "uploads\\scan_ed2ec2cb623e4c2e84afee8adfdb4c9b.png",
+        "ai_prediction": "Effusion",
+        "radiologist_decision": "Accepted: Effusion",
+        "status": "Accepted"
+    },
+    {
+        "timestamp": 1783091639.7534413,
+        "user": "radiologist",
+        "image": "uploads\\scan_6232ea0b6134465ca5daae6217aa8c7a.jpg",
+        "ai_prediction": "Lung Opacity",
+        "radiologist_decision": "Accepted: Lung Opacity",
+        "status": "Accepted"
+    },
+    {
+        "timestamp": 1783091642.50966,
+        "user": "radiologist",
+        "image": "uploads\\scan_9e98bf46cd144038b1f9d13c1dd857f5.jpg",
+        "ai_prediction": "Infiltration",
+        "radiologist_decision": "Accepted: Infiltration",
+        "status": "Accepted"
     }
 ]

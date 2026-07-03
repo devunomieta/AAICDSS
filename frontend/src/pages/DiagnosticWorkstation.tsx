@@ -574,7 +574,7 @@ export default function DiagnosticWorkstation() {
             </p>
             {isSessionActive && (
               <button 
-                onClick={endSession}
+                onClick={attemptEndSession}
                 className="text-red-400 hover:text-red-300 text-sm font-medium border border-red-500/30 hover:border-red-400 bg-red-500/10 hover:bg-red-500/20 px-3 py-1 rounded transition-colors"
               >
                 End Session / Close Case
@@ -713,53 +713,53 @@ export default function DiagnosticWorkstation() {
                 </ReactMarkdown>
               </div>
             ) : activeItem?.status === 'processing' || activeItem?.status === 'uploading' ? (
-              <div className="flex flex-col items-center justify-center flex-1 gap-4 w-full">
-                {/* Visual Indicators & Timers */}
-                <div className="flex justify-between w-full px-4 items-center">
-                  <div className="text-center">
+              <div className="flex flex-row items-center justify-between flex-1 w-full px-2">
+                {/* Left Side: Pipeline Stages Compact Checklist */}
+                <div className="flex-1 max-w-[60%]">
+                  <ul className="space-y-2">
+                    <li className="flex items-center gap-3 text-xs">
+                      <div className={`rounded-full p-1 ${activeItem.progress >= 40 ? 'text-green-400' : 'text-gray-500'}`}>
+                        {activeItem.progress >= 40 ? <CheckCircle size={14} /> : <div className="w-3.5 h-3.5 rounded-full border border-current" />}
+                      </div>
+                      <span className={activeItem.progress >= 40 ? 'text-gray-300' : 'text-gray-500'}>Uploading scan to server</span>
+                    </li>
+                    <li className="flex items-center gap-3 text-xs">
+                      <div className={`rounded-full p-1 ${activeItem.progress >= 80 ? 'text-green-400' : 'text-gray-500'}`}>
+                        {activeItem.progress >= 80 ? <CheckCircle size={14} /> : <div className="w-3.5 h-3.5 rounded-full border border-current" />}
+                      </div>
+                      <span className={activeItem.progress >= 80 ? 'text-gray-300' : 'text-gray-500'}>Running CNN Inference</span>
+                    </li>
+                    <li className="flex items-center gap-3 text-xs">
+                      <div className={`rounded-full p-1 ${activeItem.progress === 100 ? 'text-green-400' : 'text-gray-500'}`}>
+                        {activeItem.progress === 100 ? <CheckCircle size={14} /> : <div className="w-3.5 h-3.5 rounded-full border border-current" />}
+                      </div>
+                      <span className={activeItem.progress === 100 ? 'text-gray-300' : 'text-gray-500'}>Generating Clinical Report</span>
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Right Side: Visual Indicators & Timers */}
+                <div className="flex items-center gap-6 justify-end flex-shrink-0 mr-4">
+                  <div className="text-right">
                     <p className="text-[10px] text-textMuted mb-1 uppercase tracking-wider font-bold">Elapsed</p>
                     <p className="text-lg font-mono text-white">
                       {Math.floor((currentTime - (activeItem.startTime || currentTime)) / 1000)}s
                     </p>
                   </div>
                   
-                  <div className="relative flex items-center justify-center">
+                  <div className="relative flex items-center justify-center mx-2">
                     <Brain size={42} className="text-primary animate-pulse opacity-20 absolute" />
                     <span className="text-xl font-bold text-white relative z-10 drop-shadow-md">
                       {Math.floor(activeItem.displayedProgress || 0)}%
                     </span>
                   </div>
                   
-                  <div className="text-center">
+                  <div className="text-left">
                     <p className="text-[10px] text-textMuted mb-1 uppercase tracking-wider font-bold">Est. Total</p>
                     <p className="text-lg font-mono text-gray-400">
                       ~{Math.round(dynamicEstimate)}s
                     </p>
                   </div>
-                </div>
-
-                {/* Pipeline Stages Checklist */}
-                <div className="w-full max-w-sm bg-surface/30 rounded-lg p-2.5 border border-border">
-                  <ul className="space-y-1.5">
-                    <li className="flex items-center gap-3 text-xs">
-                      <div className={`rounded-full p-1 ${activeItem.progress >= 40 ? 'text-green-400' : 'text-gray-500'}`}>
-                        {activeItem.progress >= 40 ? <CheckCircle size={12} /> : <div className="w-3 h-3 rounded-full border border-current" />}
-                      </div>
-                      <span className={activeItem.progress >= 40 ? 'text-gray-300' : 'text-gray-500'}>Uploading scan to server</span>
-                    </li>
-                    <li className="flex items-center gap-3 text-xs">
-                      <div className={`rounded-full p-1 ${activeItem.progress >= 80 ? 'text-green-400' : 'text-gray-500'}`}>
-                        {activeItem.progress >= 80 ? <CheckCircle size={12} /> : <div className="w-3 h-3 rounded-full border border-current" />}
-                      </div>
-                      <span className={activeItem.progress >= 80 ? 'text-gray-300' : 'text-gray-500'}>Running CNN Inference</span>
-                    </li>
-                    <li className="flex items-center gap-3 text-xs">
-                      <div className={`rounded-full p-1 ${activeItem.progress === 100 ? 'text-green-400' : 'text-gray-500'}`}>
-                        {activeItem.progress === 100 ? <CheckCircle size={12} /> : <div className="w-3 h-3 rounded-full border border-current" />}
-                      </div>
-                      <span className={activeItem.progress === 100 ? 'text-gray-300' : 'text-gray-500'}>Generating Clinical Report</span>
-                    </li>
-                  </ul>
                 </div>
               </div>
             ) : (
