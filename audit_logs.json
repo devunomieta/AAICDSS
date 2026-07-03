@@ -10,5 +10,11 @@
         "action": "Diagnosis Accepted",
         "user": "radiologist",
         "details": "Case: TEST3-030726 - Accepted: Lung Opacity"
+    },
+    {
+        "timestamp": 1783083891.6059284,
+        "action": "Case Started",
+        "user": "radiologist",
+        "details": "Started single case TEST4-030726"
     }
 ]

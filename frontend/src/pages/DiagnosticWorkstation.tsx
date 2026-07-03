@@ -10,8 +10,8 @@ interface BatchItem {
   results?: {
     predictions: Record<string, number>;
     uncertainty: Record<string, number>;
-    heatmap?: string;
-    gradcam?: string;
+    ig_heatmap?: string;
+    gradcam_heatmap?: string;
     report?: string;
   };
   serverPath?: string;
@@ -39,6 +39,7 @@ export default function DiagnosticWorkstation() {
   const [baselineEstimate, setBaselineEstimate] = useState<number>(25); // default fallback
   const [completedTimes, setCompletedTimes] = useState<number[]>([]);
   const [currentTime, setCurrentTime] = useState<number>(Date.now());
+  const [heatmapView, setHeatmapView] = useState<'original' | 'ig' | 'gradcam'>('original');
 
   React.useEffect(() => {
     // Fetch baseline
@@ -164,6 +165,7 @@ export default function DiagnosticWorkstation() {
       if (batch[i].status !== 'pending') continue;
       
       setActiveIndex(i);
+      setHeatmapView('original'); // reset view for new item
       setBatch(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'uploading', progress: 10, startTime: Date.now() } : item));
       
       try {
@@ -517,9 +519,42 @@ export default function DiagnosticWorkstation() {
 
           {/* Scan Viewer (Moved to Bottom) */}
           <div className="bg-background border border-border rounded-xl p-1 flex-1 relative overflow-hidden flex items-center justify-center group">
+            
+            {/* Heatmap Toggle */}
+            {activeItem && activeItem.status === 'completed' && (
+              <div className="absolute top-4 right-4 bg-surface/90 backdrop-blur border border-border rounded-lg p-1 flex gap-1 z-20 shadow-lg">
+                <button 
+                  onClick={() => setHeatmapView('original')}
+                  className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${heatmapView === 'original' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-surface'}`}
+                >
+                  Original
+                </button>
+                <button 
+                  onClick={() => setHeatmapView('ig')}
+                  disabled={!activeItem.results?.ig_heatmap}
+                  className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${heatmapView === 'ig' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-surface disabled:opacity-50 disabled:cursor-not-allowed'}`}
+                >
+                  IG Heatmap
+                </button>
+                <button 
+                  onClick={() => setHeatmapView('gradcam')}
+                  disabled={!activeItem.results?.gradcam_heatmap}
+                  className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${heatmapView === 'gradcam' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-surface disabled:opacity-50 disabled:cursor-not-allowed'}`}
+                >
+                  Grad-CAM
+                </button>
+              </div>
+            )}
+
             {activeItem ? (
               <img 
-                src={URL.createObjectURL(activeItem.file)} 
+                src={
+                  heatmapView === 'ig' && activeItem.results?.ig_heatmap 
+                    ? `http://localhost:8686/${activeItem.results.ig_heatmap}` 
+                    : heatmapView === 'gradcam' && activeItem.results?.gradcam_heatmap
+                      ? `http://localhost:8686/${activeItem.results.gradcam_heatmap}`
+                      : URL.createObjectURL(activeItem.file)
+                } 
                 alt="Scan viewer" 
                 className="max-w-full max-h-full object-contain"
               />
