@@ -43,6 +43,49 @@ export default function DiagnosticWorkstation() {
   const [currentTime, setCurrentTime] = useState<number>(Date.now());
   const [heatmapView, setHeatmapView] = useState<'original' | 'ig' | 'gradcam'>('original');
   const [isScanViewerExpanded, setIsScanViewerExpanded] = useState(false);
+  const [showDroppedWarning, setShowDroppedWarning] = useState(false);
+  const [showEndSessionWarning, setShowEndSessionWarning] = useState(false);
+
+  React.useEffect(() => {
+    // Restore session from localStorage if exists
+    const savedSession = localStorage.getItem('active_diagnostic_session');
+    if (savedSession) {
+      try {
+        const data = JSON.parse(savedSession);
+        if (data.isSessionActive) {
+          setSessionCaseId(data.sessionCaseId);
+          setSessionUploadType(data.sessionUploadType);
+          setIsSessionActive(true);
+          
+          let droppedFiles = false;
+          const restoredBatch = data.batch.filter((item: any) => {
+             if (item.serverPath) return true;
+             droppedFiles = true;
+             return false;
+          });
+          
+          setBatch(restoredBatch);
+          if (restoredBatch.length > 0) setActiveIndex(0);
+          if (droppedFiles) setShowDroppedWarning(true);
+        }
+      } catch (err) {
+        console.error("Failed to restore session", err);
+      }
+    }
+  }, []);
+
+  React.useEffect(() => {
+    // Save session to localStorage
+    if (isSessionActive) {
+      const sessionData = {
+        sessionCaseId,
+        sessionUploadType,
+        isSessionActive,
+        batch: batch.map(b => ({ ...b, file: undefined })) // omit file object
+      };
+      localStorage.setItem('active_diagnostic_session', JSON.stringify(sessionData));
+    }
+  }, [isSessionActive, sessionCaseId, sessionUploadType, batch]);
 
   React.useEffect(() => {
     // Fetch baseline
@@ -78,24 +121,57 @@ export default function DiagnosticWorkstation() {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const endSession = () => {
+  const confirmEndSession = () => {
     setSessionCaseId('');
     setSessionUploadType(null);
     setIsSessionActive(false);
     setBatch([]);
     setActiveIndex(null);
+    setShowEndSessionWarning(false);
+    setShowDroppedWarning(false);
+    localStorage.removeItem('active_diagnostic_session');
+  };
+
+  const attemptEndSession = () => {
+    const hasUnvalidated = batch.some(item => item.status === 'completed' && !item.validationStatus);
+    if (hasUnvalidated) {
+      setShowEndSessionWarning(true);
+    } else {
+      confirmEndSession();
+    }
+  };
+
+  const generateCaseId = (input: string) => {
+    const today = new Date();
+    const dd = String(today.getDate()).padStart(2, '0');
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const yy = String(today.getFullYear()).slice(-2);
+    const dateStr = `${dd}${mm}${yy}`;
+    
+    let sn = 1;
+    const storedDate = localStorage.getItem('daily_case_date');
+    if (storedDate === dateStr) {
+      sn = parseInt(localStorage.getItem('daily_case_sn') || '0') + 1;
+    }
+    localStorage.setItem('daily_case_date', dateStr);
+    localStorage.setItem('daily_case_sn', sn.toString());
+
+    return `${dateStr}-(${sn})-${input}`;
   };
 
   const startSession = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!sessionCaseId || !sessionUploadType) return;
     
+    const formattedId = generateCaseId(sessionCaseId);
+    setSessionCaseId(formattedId);
+    
     setIsSessionActive(true);
     setIsModalOpen(false);
 
     try {
       const formData = new FormData();
-      formData.append('case_id', sessionCaseId);
+      formData.append('case_id', formattedId);
       formData.append('upload_type', sessionUploadType);
       await axios.post('http://localhost:8686/api/init_case', formData);
 
@@ -103,7 +179,7 @@ export default function DiagnosticWorkstation() {
       const auditData = new FormData();
       auditData.append('action', 'Case Started');
       auditData.append('user', 'radiologist');
-      auditData.append('details', `Started ${sessionUploadType} case ${sessionCaseId}`);
+      auditData.append('details', `Started ${sessionUploadType} case ${formattedId}`);
       await axios.post('http://localhost:8686/api/audit/log', auditData);
     } catch (err) {
       console.error("Failed to initialize case in DB", err);
@@ -443,6 +519,29 @@ export default function DiagnosticWorkstation() {
         </div>
       )}
 
+      {/* End Session Safeguard Modal */}
+      {showEndSessionWarning && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-surface border border-border rounded-xl p-6 w-full max-w-md shadow-2xl relative">
+            <div className="flex items-center gap-3 text-yellow-500 mb-4">
+              <AlertTriangle size={24} />
+              <h2 className="text-xl font-bold text-white">Unvalidated Scans</h2>
+            </div>
+            <p className="text-gray-300 text-sm mb-6 leading-relaxed">
+              You have completed scans that have not been <strong className="text-white">Accepted</strong> or <strong className="text-white">Overridden</strong>. Ending the session now will cancel these reports and they will not be logged.
+            </p>
+            <div className="flex gap-4">
+              <button onClick={() => setShowEndSessionWarning(false)} className="flex-1 bg-surface border border-border hover:bg-gray-800 text-white py-2.5 rounded-lg font-medium transition-colors">
+                Go Back
+              </button>
+              <button onClick={confirmEndSession} className="flex-1 bg-red-900/50 hover:bg-red-600 border border-red-800 hover:border-red-500 text-white py-2.5 rounded-lg font-medium transition-colors">
+                Discard & End
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Hidden File Input */}
       <input 
         type="file" 
@@ -500,6 +599,19 @@ export default function DiagnosticWorkstation() {
               onDragLeave={onDragLeave}
               onDrop={onDrop}
             >
+              {showDroppedWarning && (
+                <div className="m-3 p-3 bg-red-900/40 border border-red-800/50 rounded-lg flex items-start gap-3">
+                  <AlertTriangle size={16} className="text-red-400 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-xs text-red-200 leading-relaxed">
+                      <strong>Warning:</strong> Some pending scans were lost when the browser closed. Please reupload them or end the session.
+                    </p>
+                  </div>
+                  <button onClick={() => setShowDroppedWarning(false)} className="text-red-400 hover:text-red-300">
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
               {batch.length === 0 ? (
                 <div 
                   className="h-full flex flex-col items-center justify-center text-textMuted border-2 border-dashed border-border rounded-lg bg-surface/50 cursor-pointer hover:border-gray-500 hover:text-gray-300 transition-colors"
