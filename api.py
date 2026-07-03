@@ -137,7 +137,7 @@ async def fetch_analytics():
         "pending_compliance": pending_feedback,
         "ram_used_gb": ram_used_gb,
         "ram_total_gb": ram_total_gb,
-        "avg_inference_time": "24.5s" # System wide mock metric for now since individual image inference is not timed.
+        "avg_inference_time": 24.5 # System wide mock metric (in seconds) for baseline
     }
 
 @app.post("/api/infer")

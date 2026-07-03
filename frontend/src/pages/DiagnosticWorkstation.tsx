@@ -16,6 +16,9 @@ interface BatchItem {
   };
   serverPath?: string;
   validationStatus?: 'accepted' | 'overridden';
+  startTime?: number;
+  endTime?: number;
+  displayedProgress?: number;
 }
 
 export default function DiagnosticWorkstation() {
@@ -31,6 +34,43 @@ export default function DiagnosticWorkstation() {
   
   // Drag State
   const [isDragging, setIsDragging] = useState(false);
+  
+  // Timers and Analytics
+  const [baselineEstimate, setBaselineEstimate] = useState<number>(25); // default fallback
+  const [completedTimes, setCompletedTimes] = useState<number[]>([]);
+  const [currentTime, setCurrentTime] = useState<number>(Date.now());
+
+  React.useEffect(() => {
+    // Fetch baseline
+    axios.get('http://localhost:8686/api/analytics').then(res => {
+      if (res.data?.avg_inference_time) {
+        setBaselineEstimate(res.data.avg_inference_time);
+      }
+    }).catch(err => console.error("Error fetching analytics", err));
+  }, []);
+
+  React.useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isProcessing) {
+      interval = setInterval(() => {
+        setCurrentTime(Date.now());
+        setBatch(prev => prev.map(item => {
+          if (['uploading', 'processing'].includes(item.status)) {
+            const current = item.displayedProgress || 0;
+            const target = item.progress;
+            if (current < target) {
+              return { ...item, displayedProgress: Math.min(target, current + 1) }; // +1 per 100ms
+            }
+          } else if (item.status === 'completed' && item.displayedProgress !== 100) {
+            return { ...item, displayedProgress: 100 };
+          }
+          return item;
+        }));
+      }, 50);
+    }
+    return () => clearInterval(interval);
+  }, [isProcessing]);
+
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -83,6 +123,7 @@ export default function DiagnosticWorkstation() {
         file,
         status: 'pending' as const,
         progress: 0,
+        displayedProgress: 0,
       }));
       setBatch(prev => [...prev, ...mappedFiles]);
       if (activeIndex === null && mappedFiles.length > 0) {
@@ -123,7 +164,7 @@ export default function DiagnosticWorkstation() {
       if (batch[i].status !== 'pending') continue;
       
       setActiveIndex(i);
-      setBatch(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'uploading', progress: 10 } : item));
+      setBatch(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'uploading', progress: 10, startTime: Date.now() } : item));
       
       try {
         const formData = new FormData();
@@ -169,10 +210,15 @@ export default function DiagnosticWorkstation() {
           }
         }
         
-        setBatch(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'completed', progress: 100 } : item));
+        const now = Date.now();
+        setBatch(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'completed', progress: 100, endTime: now } : item));
+        
+        // Track completed time for rolling average
+        const itemStart = batch[i].startTime || now;
+        setCompletedTimes(prev => [...prev, (now - itemStart) / 1000]);
         
       } catch (error) {
-        setBatch(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'error', progress: 0 } : item));
+        setBatch(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'error', progress: 0, endTime: Date.now() } : item));
       }
     }
     
@@ -180,6 +226,11 @@ export default function DiagnosticWorkstation() {
   };
 
   const activeItem = activeIndex !== null ? batch[activeIndex] : null;
+
+  // Calculate dynamic estimate
+  const dynamicEstimate = completedTimes.length > 0 
+    ? completedTimes.reduce((a, b) => a + b, 0) / completedTimes.length 
+    : baselineEstimate;
 
   const handleValidation = async (type: 'accept' | 'override') => {
     if (!activeItem || activeIndex === null) return;
@@ -361,10 +412,10 @@ export default function DiagnosticWorkstation() {
                     {/* Progress Bar */}
                     <div className="w-full bg-background rounded-full h-1.5 overflow-hidden">
                       <div 
-                        className={`h-full rounded-full transition-all duration-500 ${
+                        className={`h-full rounded-full transition-all duration-300 ${
                           item.status === 'completed' ? 'bg-green-500' : 'bg-primary'
                         }`} 
-                        style={{ width: `${item.progress}%` }}
+                        style={{ width: `${item.displayedProgress || 0}%` }}
                       />
                     </div>
                   </div>
@@ -408,15 +459,53 @@ export default function DiagnosticWorkstation() {
                 }}
               />
             ) : activeItem?.status === 'processing' || activeItem?.status === 'uploading' ? (
-              <div className="flex flex-col items-center justify-center flex-1 gap-4">
-                <div className="relative flex items-center justify-center">
-                  <Brain size={48} className="text-primary animate-pulse opacity-20 absolute" />
-                  <span className="text-2xl font-bold text-white relative z-10">{activeItem.progress}%</span>
+              <div className="flex flex-col items-center justify-center flex-1 gap-6 w-full">
+                {/* Visual Indicators & Timers */}
+                <div className="flex justify-between w-full px-4 items-center">
+                  <div className="text-center">
+                    <p className="text-xs text-textMuted mb-1 uppercase tracking-wider font-bold">Elapsed Time</p>
+                    <p className="text-xl font-mono text-white">
+                      {Math.floor((currentTime - (activeItem.startTime || currentTime)) / 1000)}s
+                    </p>
+                  </div>
+                  
+                  <div className="relative flex items-center justify-center">
+                    <Brain size={56} className="text-primary animate-pulse opacity-20 absolute" />
+                    <span className="text-3xl font-bold text-white relative z-10 drop-shadow-md">
+                      {Math.floor(activeItem.displayedProgress || 0)}%
+                    </span>
+                  </div>
+                  
+                  <div className="text-center">
+                    <p className="text-xs text-textMuted mb-1 uppercase tracking-wider font-bold">Est. Total</p>
+                    <p className="text-xl font-mono text-gray-400">
+                      ~{Math.round(dynamicEstimate)}s
+                    </p>
+                  </div>
                 </div>
-                <div className="text-sm font-medium text-primary animate-pulse">
-                  {activeItem.progress < 40 ? "Uploading scan to server..." : 
-                   activeItem.progress < 80 ? "Running PyTorch CNN Inference..." : 
-                   "Streaming LLaMA-3 Clinical Report..."}
+
+                {/* Pipeline Stages Checklist */}
+                <div className="w-full max-w-sm bg-surface/50 rounded-lg p-4 border border-border">
+                  <ul className="space-y-3">
+                    <li className="flex items-center gap-3 text-sm">
+                      <div className={`rounded-full p-1 ${activeItem.progress >= 40 ? 'bg-green-500/20 text-green-400' : 'bg-gray-700/50 text-gray-500'}`}>
+                        {activeItem.progress >= 40 ? <CheckCircle size={14} /> : <div className="w-3.5 h-3.5 rounded-full border-2 border-current" />}
+                      </div>
+                      <span className={activeItem.progress >= 40 ? 'text-gray-200' : 'text-gray-500'}>Uploading scan to server</span>
+                    </li>
+                    <li className="flex items-center gap-3 text-sm">
+                      <div className={`rounded-full p-1 ${activeItem.progress >= 80 ? 'bg-green-500/20 text-green-400' : 'bg-gray-700/50 text-gray-500'}`}>
+                        {activeItem.progress >= 80 ? <CheckCircle size={14} /> : <div className="w-3.5 h-3.5 rounded-full border-2 border-current" />}
+                      </div>
+                      <span className={activeItem.progress >= 80 ? 'text-gray-200' : 'text-gray-500'}>Running CNN Inference</span>
+                    </li>
+                    <li className="flex items-center gap-3 text-sm">
+                      <div className={`rounded-full p-1 ${activeItem.progress === 100 ? 'bg-green-500/20 text-green-400' : 'bg-gray-700/50 text-gray-500'}`}>
+                        {activeItem.progress === 100 ? <CheckCircle size={14} /> : <div className="w-3.5 h-3.5 rounded-full border-2 border-current" />}
+                      </div>
+                      <span className={activeItem.progress === 100 ? 'text-gray-200' : 'text-gray-500'}>Generating Clinical Report</span>
+                    </li>
+                  </ul>
                 </div>
               </div>
             ) : (
