@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Database, Users, Settings, Activity, Brain, Play, CheckCircle, Clock } from 'lucide-react';
+import { Database, Users, Settings, Activity, Brain, Play, CheckCircle, Clock, LineChart } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
+import { SUS_Survey } from '../components/SUS_Survey';
 import axios from 'axios';
 import { useToast } from '../components/ToastContext';
 
@@ -52,6 +54,12 @@ export function ManageSystem() {
           className={`flex items-center gap-2 px-4 py-2 font-medium rounded-lg transition-colors ${activeTab === 'eval' ? 'bg-primary/20 text-primary' : 'text-textMuted hover:text-white'}`}
         >
           <Brain size={18} /> Evaluation
+        </button>
+        <button 
+          onClick={() => setActiveTab('sus')} 
+          className={`flex items-center gap-2 px-4 py-2 font-medium rounded-lg transition-colors ${activeTab === 'sus' ? 'bg-primary/20 text-primary' : 'text-textMuted hover:text-white'}`}
+        >
+          <LineChart size={18} /> Usability Survey
         </button>
       </div>
 
@@ -144,7 +152,7 @@ export function ManageSystem() {
                 <div className="p-6 bg-background border border-border rounded-lg">
                   <h3 className="text-lg font-bold text-green-400 mb-4 flex items-center gap-2"><CheckCircle size={20} /> Evaluation Complete</h3>
                   <p className="text-gray-300 mb-4">Samples processed: {evalResults.samples_evaluated}</p>
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                     {Object.entries(evalResults.metrics).map(([key, value]: any) => (
                       <div key={key} className="bg-surface border border-border p-4 rounded-lg text-center">
                         <p className="text-sm text-textMuted mb-1">{key}</p>
@@ -152,9 +160,37 @@ export function ManageSystem() {
                       </div>
                     ))}
                   </div>
+
+                  <h3 className="text-lg font-bold text-white mb-4">Baseline Comparison</h3>
+                  <div className="bg-surface border border-border p-4 rounded-lg h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={[
+                          { name: 'AUC', Baseline: 0.81, 'New Model': evalResults.metrics['AUC'] },
+                          { name: 'F1 Score', Baseline: 0.76, 'New Model': evalResults.metrics['F1_Score'] },
+                          { name: 'Accuracy', Baseline: 0.78, 'New Model': evalResults.metrics['Accuracy'] }
+                        ]}
+                        margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                        <XAxis dataKey="name" stroke="#9CA3AF" />
+                        <YAxis stroke="#9CA3AF" domain={[0, 1]} />
+                        <RechartsTooltip contentStyle={{ backgroundColor: '#1F2937', border: 'none' }} />
+                        <Legend />
+                        <Bar dataKey="Baseline" fill="#4B5563" />
+                        <Bar dataKey="New Model" fill="#14B8A6" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {activeTab === 'sus' && (
+          <div className="max-w-4xl mx-auto">
+            <SUS_Survey />
           </div>
         )}
 
