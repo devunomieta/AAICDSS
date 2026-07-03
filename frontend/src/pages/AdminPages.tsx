@@ -4,8 +4,11 @@ import axios from 'axios';
 import { useToast } from '../components/ToastContext';
 
 export function ManageSystem() {
-  const [activeTab, setActiveTab] = useState<'users' | 'config' | 'audit'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'config' | 'audit' | 'eval'>('users');
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [evalFile, setEvalFile] = useState<File | null>(null);
+  const [evaluating, setEvaluating] = useState(false);
+  const [evalResults, setEvalResults] = useState<any>(null);
 
   useEffect(() => {
     if (activeTab === 'audit') {
@@ -43,6 +46,12 @@ export function ManageSystem() {
           className={`flex items-center gap-2 px-4 py-2 font-medium rounded-lg transition-colors ${activeTab === 'audit' ? 'bg-primary/20 text-primary' : 'text-textMuted hover:text-white'}`}
         >
           <Activity size={18} /> Audit Logs
+        </button>
+        <button 
+          onClick={() => setActiveTab('eval')} 
+          className={`flex items-center gap-2 px-4 py-2 font-medium rounded-lg transition-colors ${activeTab === 'eval' ? 'bg-primary/20 text-primary' : 'text-textMuted hover:text-white'}`}
+        >
+          <Brain size={18} /> Evaluation
         </button>
       </div>
 
@@ -91,6 +100,60 @@ export function ManageSystem() {
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'eval' && (
+          <div className="bg-surface border border-border rounded-xl p-6">
+            <h2 className="text-xl font-bold text-white mb-6">System Evaluation (Objective 3)</h2>
+            <div className="space-y-6">
+              <div className="p-4 bg-background border border-border rounded-lg">
+                <p className="font-bold text-white mb-1">Upload Test Dataset (CSV)</p>
+                <p className="text-sm text-textMuted mb-4">CSV must contain "filepath" and "true_label" (1 for disease, 0 for healthy).</p>
+                <div className="flex items-center gap-4">
+                  <input type="file" accept=".csv" onChange={(e) => setEvalFile(e.target.files?.[0] || null)} className="text-sm text-gray-300" />
+                  <button 
+                    onClick={async () => {
+                      if (!evalFile) return;
+                      setEvaluating(true);
+                      setEvalResults(null);
+                      const formData = new FormData();
+                      formData.append('file', evalFile);
+                      formData.append('target_disease', 'Pneumonia');
+                      formData.append('threshold', '0.5');
+                      try {
+                        const res = await axios.post('http://localhost:8686/api/evaluate', formData);
+                        setEvalResults(res.data);
+                      } catch (err: any) {
+                        alert("Evaluation failed: " + (err.response?.data?.error || err.message));
+                      } finally {
+                        setEvaluating(false);
+                      }
+                    }}
+                    disabled={!evalFile || evaluating}
+                    className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors ${!evalFile || evaluating ? 'bg-surface border border-border text-textMuted cursor-not-allowed' : 'bg-primary hover:bg-primaryHover text-white'}`}
+                  >
+                    {evaluating ? <Clock size={16} className="animate-spin" /> : <Play size={16} />}
+                    {evaluating ? 'Evaluating...' : 'Run Evaluation'}
+                  </button>
+                </div>
+              </div>
+
+              {evalResults && (
+                <div className="p-6 bg-background border border-border rounded-lg">
+                  <h3 className="text-lg font-bold text-green-400 mb-4 flex items-center gap-2"><CheckCircle size={20} /> Evaluation Complete</h3>
+                  <p className="text-gray-300 mb-4">Samples processed: {evalResults.samples_evaluated}</p>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    {Object.entries(evalResults.metrics).map(([key, value]: any) => (
+                      <div key={key} className="bg-surface border border-border p-4 rounded-lg text-center">
+                        <p className="text-sm text-textMuted mb-1">{key}</p>
+                        <p className="text-2xl font-bold text-white">{value}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

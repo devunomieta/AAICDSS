@@ -34,5 +34,11 @@
         "action": "User Login",
         "user": "radiologist",
         "details": "Successfully authenticated via Demo Account"
+    },
+    {
+        "timestamp": 1783088556.4561856,
+        "action": "User Login",
+        "user": "admin",
+        "details": "Successfully authenticated via Demo Account"
     }
 ]

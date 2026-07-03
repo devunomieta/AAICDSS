@@ -12,6 +12,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional, Any, Dict
 import psutil
 from datetime import datetime
+import pandas as pd
+from sklearn.metrics import roc_auc_score, precision_score, recall_score, f1_score, accuracy_score
 from cases_db import get_cases, get_case, create_case, update_case_results, delete_case, get_deleted_cases
 
 app = FastAPI(title="AffiongAI CDSS Backend API")
@@ -167,6 +169,92 @@ async def run_inference(image_path: str = Form(...)):
         }
     except Exception as e:
         return {"error": str(e)}
+
+@app.post("/api/evaluate")
+async def evaluate_system(file: UploadFile = File(...), target_disease: str = Form("Pneumonia"), threshold: float = Form(0.5)):
+    """Evaluates the system using an uploaded CSV test dataset."""
+    try:
+        # Save CSV to temp
+        ext = os.path.splitext(file.filename)[1]
+        csv_path = os.path.join(str(UPLOAD_DIR), f"eval_{uuid.uuid4().hex}{ext}")
+        with open(csv_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            
+        df = pd.read_csv(csv_path)
+        if 'filepath' not in df.columns or 'true_label' not in df.columns:
+            return JSONResponse(status_code=400, content={"error": "CSV must contain 'filepath' and 'true_label' columns."})
+            
+        y_true = []
+        y_scores = []
+        
+        classifier = TOOLS_DICT.get("TorchXRayVisionClassifierTool")
+        if not classifier:
+            return JSONResponse(status_code=500, content={"error": "Classifier tool not loaded."})
+            
+        for _, row in df.iterrows():
+            img_path = row['filepath']
+            true_label = int(row['true_label'])
+            
+            if not os.path.exists(img_path):
+                # Try relative to uploads
+                img_path = os.path.join(str(UPLOAD_DIR), os.path.basename(img_path))
+                if not os.path.exists(img_path):
+                    continue # skip missing
+                    
+            out, _ = classifier._run(img_path)
+            score = float(out.get(target_disease, 0.0))
+            
+            y_true.append(true_label)
+            y_scores.append(score)
+            
+        if len(y_true) == 0:
+            return JSONResponse(status_code=400, content={"error": "No valid images processed."})
+            
+        y_pred = [1 if s >= threshold else 0 for s in y_scores]
+        
+        # Calculate metrics
+        try:
+            auc = roc_auc_score(y_true, y_scores)
+        except ValueError:
+            auc = 0.0 # Only one class present in y_true
+            
+        precision = precision_score(y_true, y_pred, zero_division=0)
+        recall = recall_score(y_true, y_pred, zero_division=0)
+        f1 = f1_score(y_true, y_pred, zero_division=0)
+        acc = accuracy_score(y_true, y_pred)
+        
+        return {
+            "status": "success",
+            "samples_evaluated": len(y_true),
+            "metrics": {
+                "AUC": round(auc, 4),
+                "Precision": round(precision, 4),
+                "Recall": round(recall, 4),
+                "F1_Score": round(f1, 4),
+                "Accuracy": round(acc, 4)
+            }
+        }
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+@app.post("/api/infer/ct")
+async def infer_ct(file: UploadFile = File(...)):
+    """
+    Architectural placeholder for 3D CT analysis.
+    Currently, the MedRAX-2 backend supports 2D CXR models. This endpoint demonstrates
+    that the microservice is modal-agnostic and structurally prepared to route 3D
+    DICOM volumes to a 3D foundational model (e.g., MONAI) once the hardware and 
+    weights are supplied.
+    """
+    return JSONResponse(
+        status_code=501, 
+        content={
+            "status": "not_implemented",
+            "message": "CT Volumetric Analysis is structurally supported by the router but 3D model weights (e.g., MONAI) are not currently loaded.",
+            "modality": "CT",
+            "dimensions": "3D"
+        }
+    )
 
 @app.post("/api/report")
 async def generate_clinical_report(preds: str = Form(...), uncertainties: str = Form(...), case_id: Optional[str] = Form(None)):
