@@ -1,5 +1,5 @@
 import React, { useState, useRef, DragEvent } from 'react';
-import { Upload, FileImage, AlertTriangle, CheckCircle, Brain, Activity, X } from 'lucide-react';
+import { Upload, FileImage, AlertTriangle, CheckCircle, Brain, Activity, X, Maximize, Minimize } from 'lucide-react';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -42,6 +42,7 @@ export default function DiagnosticWorkstation() {
   const [completedTimes, setCompletedTimes] = useState<number[]>([]);
   const [currentTime, setCurrentTime] = useState<number>(Date.now());
   const [heatmapView, setHeatmapView] = useState<'original' | 'ig' | 'gradcam'>('original');
+  const [isScanViewerExpanded, setIsScanViewerExpanded] = useState(false);
 
   React.useEffect(() => {
     // Fetch baseline
@@ -271,6 +272,124 @@ export default function DiagnosticWorkstation() {
     }
   };
 
+  const renderScanViewerContent = (isExpanded: boolean) => (
+    <>
+      {/* Top Toolbar (Heatmap Toggle & Expand) */}
+      <div className="bg-surface/50 border-b border-border p-2 flex justify-between items-center z-20">
+        <div className="flex gap-2">
+          {activeItem && activeItem.status === 'completed' && (
+            <div className="bg-background border border-border rounded-lg p-1 flex gap-1 shadow-sm">
+              <button 
+                onClick={() => setHeatmapView('original')}
+                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${heatmapView === 'original' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-surface'}`}
+              >
+                Original
+              </button>
+              <button 
+                onClick={() => setHeatmapView('ig')}
+                disabled={!activeItem.results?.ig_heatmap}
+                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${heatmapView === 'ig' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-surface disabled:opacity-50 disabled:cursor-not-allowed'}`}
+              >
+                IG Heatmap
+              </button>
+              <button 
+                onClick={() => setHeatmapView('gradcam')}
+                disabled={!activeItem.results?.gradcam_heatmap}
+                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${heatmapView === 'gradcam' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-surface disabled:opacity-50 disabled:cursor-not-allowed'}`}
+              >
+                Grad-CAM
+              </button>
+            </div>
+          )}
+        </div>
+        <button 
+          onClick={() => setIsScanViewerExpanded(!isExpanded)}
+          className="text-gray-400 hover:text-white bg-background border border-border rounded-lg p-2 hover:bg-surface transition-colors"
+          title={isExpanded ? "Minimize" : "Fullscreen"}
+        >
+          {isExpanded ? <Minimize size={16} /> : <Maximize size={16} />}
+        </button>
+      </div>
+
+      {/* Image Container */}
+      <div className="flex-1 relative flex items-center justify-center p-2 min-h-0 bg-black/20">
+        {activeItem ? (
+          <img 
+            src={
+              heatmapView === 'ig' && activeItem.results?.ig_heatmap 
+                ? `http://localhost:8686/${activeItem.results.ig_heatmap}` 
+                : heatmapView === 'gradcam' && activeItem.results?.gradcam_heatmap
+                  ? `http://localhost:8686/${activeItem.results.gradcam_heatmap}`
+                  : URL.createObjectURL(activeItem.file)
+            } 
+            alt="Scan viewer" 
+            className="max-w-full max-h-full object-contain"
+          />
+        ) : (
+          <div className="text-textMuted flex flex-col items-center">
+            <Brain size={48} className="mb-4 opacity-20" />
+            <p>Select a scan from the image queue to view</p>
+          </div>
+        )}
+      </div>
+      
+      {/* Legends Overlay */}
+      {activeItem && activeItem.status === 'completed' && heatmapView !== 'original' && (
+        <div className="absolute bottom-20 right-4 bg-surface/95 backdrop-blur-md border border-border p-3 rounded-lg shadow-xl text-xs z-20 w-48">
+          <p className="font-bold text-gray-200 mb-2 border-b border-border/50 pb-1.5">
+            {heatmapView === 'ig' ? 'IG Heatmap Legend' : 'Grad-CAM Legend'}
+          </p>
+          {heatmapView === 'ig' ? (
+            <div className="space-y-2.5 mt-2">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-sm bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]"></div>
+                <span className="text-gray-300 font-medium">Positive Evidence</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-sm bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"></div>
+                <span className="text-gray-300 font-medium">Negative Evidence</span>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2 mt-2">
+              <div className="flex items-center gap-2">
+                <div className="w-full h-3 rounded-sm bg-gradient-to-r from-blue-500 via-green-500 to-red-500"></div>
+              </div>
+              <div className="flex justify-between text-gray-400 font-medium">
+                <span>Low</span>
+                <span>High Activation</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      
+      {/* Validation Action Footer */}
+      {activeItem && activeItem.status === 'completed' && (
+        <div className="bg-surface/50 border-t border-border p-3 flex justify-center items-center gap-4 z-20">
+          {!activeItem.validationStatus ? (
+            <>
+              <button onClick={() => handleValidation('accept')} className="bg-green-600 hover:bg-green-500 text-white px-6 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-lg shadow-green-900/20 transition-all hover:-translate-y-0.5">
+                <CheckCircle size={16} /> Accept Diagnosis
+              </button>
+              <button onClick={() => handleValidation('override')} className="bg-red-900/50 hover:bg-red-600 text-red-100 border border-red-800 hover:border-red-500 px-6 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-all hover:-translate-y-0.5">
+                <AlertTriangle size={16} /> Override
+              </button>
+            </>
+          ) : (
+            <div className="flex items-center gap-2 px-6 py-2 bg-background/80 rounded-lg border border-border shadow-inner">
+              {activeItem.validationStatus === 'accepted' ? (
+                <span className="text-green-400 flex items-center gap-2 font-medium text-sm"><CheckCircle size={16} /> Diagnosis Accepted</span>
+              ) : (
+                <span className="text-red-400 flex items-center gap-2 font-medium text-sm"><AlertTriangle size={16} /> Diagnosis Overridden</span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  );
+
   return (
     <div className="flex flex-col h-full gap-6 relative">
       
@@ -311,6 +430,15 @@ export default function DiagnosticWorkstation() {
                 Start Session
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Fullscreen Scan Viewer Modal */}
+      {isScanViewerExpanded && (
+        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-md">
+          <div className="bg-background border border-border rounded-xl w-full h-full max-w-7xl max-h-[90vh] flex flex-col relative overflow-hidden shadow-2xl">
+            {renderScanViewerContent(true)}
           </div>
         </div>
       )}
@@ -449,8 +577,8 @@ export default function DiagnosticWorkstation() {
         <div className="w-full lg:w-2/3 flex flex-col gap-4">
           
           {/* AI Report Box (Moved to Top) */}
-          <div className="bg-background border border-border rounded-xl h-64 p-5 overflow-y-auto shrink-0 flex flex-col">
-            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+          <div className="bg-background border border-border rounded-xl h-48 p-4 overflow-y-auto shrink-0 flex flex-col">
+            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
               <Activity size={16} /> AI Diagnostic Report
             </h3>
             
@@ -461,51 +589,51 @@ export default function DiagnosticWorkstation() {
                 </ReactMarkdown>
               </div>
             ) : activeItem?.status === 'processing' || activeItem?.status === 'uploading' ? (
-              <div className="flex flex-col items-center justify-center flex-1 gap-6 w-full">
+              <div className="flex flex-col items-center justify-center flex-1 gap-4 w-full">
                 {/* Visual Indicators & Timers */}
                 <div className="flex justify-between w-full px-4 items-center">
                   <div className="text-center">
-                    <p className="text-xs text-textMuted mb-1 uppercase tracking-wider font-bold">Elapsed Time</p>
-                    <p className="text-xl font-mono text-white">
+                    <p className="text-[10px] text-textMuted mb-1 uppercase tracking-wider font-bold">Elapsed</p>
+                    <p className="text-lg font-mono text-white">
                       {Math.floor((currentTime - (activeItem.startTime || currentTime)) / 1000)}s
                     </p>
                   </div>
                   
                   <div className="relative flex items-center justify-center">
-                    <Brain size={56} className="text-primary animate-pulse opacity-20 absolute" />
-                    <span className="text-3xl font-bold text-white relative z-10 drop-shadow-md">
+                    <Brain size={42} className="text-primary animate-pulse opacity-20 absolute" />
+                    <span className="text-xl font-bold text-white relative z-10 drop-shadow-md">
                       {Math.floor(activeItem.displayedProgress || 0)}%
                     </span>
                   </div>
                   
                   <div className="text-center">
-                    <p className="text-xs text-textMuted mb-1 uppercase tracking-wider font-bold">Est. Total</p>
-                    <p className="text-xl font-mono text-gray-400">
+                    <p className="text-[10px] text-textMuted mb-1 uppercase tracking-wider font-bold">Est. Total</p>
+                    <p className="text-lg font-mono text-gray-400">
                       ~{Math.round(dynamicEstimate)}s
                     </p>
                   </div>
                 </div>
 
                 {/* Pipeline Stages Checklist */}
-                <div className="w-full max-w-sm bg-surface/50 rounded-lg p-4 border border-border">
-                  <ul className="space-y-3">
-                    <li className="flex items-center gap-3 text-sm">
-                      <div className={`rounded-full p-1 ${activeItem.progress >= 40 ? 'bg-green-500/20 text-green-400' : 'bg-gray-700/50 text-gray-500'}`}>
-                        {activeItem.progress >= 40 ? <CheckCircle size={14} /> : <div className="w-3.5 h-3.5 rounded-full border-2 border-current" />}
+                <div className="w-full max-w-sm bg-surface/30 rounded-lg p-2.5 border border-border">
+                  <ul className="space-y-1.5">
+                    <li className="flex items-center gap-3 text-xs">
+                      <div className={`rounded-full p-1 ${activeItem.progress >= 40 ? 'text-green-400' : 'text-gray-500'}`}>
+                        {activeItem.progress >= 40 ? <CheckCircle size={12} /> : <div className="w-3 h-3 rounded-full border border-current" />}
                       </div>
-                      <span className={activeItem.progress >= 40 ? 'text-gray-200' : 'text-gray-500'}>Uploading scan to server</span>
+                      <span className={activeItem.progress >= 40 ? 'text-gray-300' : 'text-gray-500'}>Uploading scan to server</span>
                     </li>
-                    <li className="flex items-center gap-3 text-sm">
-                      <div className={`rounded-full p-1 ${activeItem.progress >= 80 ? 'bg-green-500/20 text-green-400' : 'bg-gray-700/50 text-gray-500'}`}>
-                        {activeItem.progress >= 80 ? <CheckCircle size={14} /> : <div className="w-3.5 h-3.5 rounded-full border-2 border-current" />}
+                    <li className="flex items-center gap-3 text-xs">
+                      <div className={`rounded-full p-1 ${activeItem.progress >= 80 ? 'text-green-400' : 'text-gray-500'}`}>
+                        {activeItem.progress >= 80 ? <CheckCircle size={12} /> : <div className="w-3 h-3 rounded-full border border-current" />}
                       </div>
-                      <span className={activeItem.progress >= 80 ? 'text-gray-200' : 'text-gray-500'}>Running CNN Inference</span>
+                      <span className={activeItem.progress >= 80 ? 'text-gray-300' : 'text-gray-500'}>Running CNN Inference</span>
                     </li>
-                    <li className="flex items-center gap-3 text-sm">
-                      <div className={`rounded-full p-1 ${activeItem.progress === 100 ? 'bg-green-500/20 text-green-400' : 'bg-gray-700/50 text-gray-500'}`}>
-                        {activeItem.progress === 100 ? <CheckCircle size={14} /> : <div className="w-3.5 h-3.5 rounded-full border-2 border-current" />}
+                    <li className="flex items-center gap-3 text-xs">
+                      <div className={`rounded-full p-1 ${activeItem.progress === 100 ? 'text-green-400' : 'text-gray-500'}`}>
+                        {activeItem.progress === 100 ? <CheckCircle size={12} /> : <div className="w-3 h-3 rounded-full border border-current" />}
                       </div>
-                      <span className={activeItem.progress === 100 ? 'text-gray-200' : 'text-gray-500'}>Generating Clinical Report</span>
+                      <span className={activeItem.progress === 100 ? 'text-gray-300' : 'text-gray-500'}>Generating Clinical Report</span>
                     </li>
                   </ul>
                 </div>
@@ -519,111 +647,7 @@ export default function DiagnosticWorkstation() {
 
           {/* Scan Viewer (Moved to Bottom) */}
           <div className="bg-background border border-border rounded-xl flex-1 flex flex-col relative overflow-hidden group">
-            
-            {/* Top Toolbar (Heatmap Toggle) */}
-            {activeItem && activeItem.status === 'completed' && (
-              <div className="bg-surface/50 border-b border-border p-2 flex justify-end items-center z-20">
-                <div className="bg-background border border-border rounded-lg p-1 flex gap-1 shadow-sm">
-                  <button 
-                    onClick={() => setHeatmapView('original')}
-                    className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${heatmapView === 'original' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-surface'}`}
-                  >
-                    Original
-                  </button>
-                  <button 
-                    onClick={() => setHeatmapView('ig')}
-                    disabled={!activeItem.results?.ig_heatmap}
-                    className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${heatmapView === 'ig' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-surface disabled:opacity-50 disabled:cursor-not-allowed'}`}
-                  >
-                    IG Heatmap
-                  </button>
-                  <button 
-                    onClick={() => setHeatmapView('gradcam')}
-                    disabled={!activeItem.results?.gradcam_heatmap}
-                    className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${heatmapView === 'gradcam' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-surface disabled:opacity-50 disabled:cursor-not-allowed'}`}
-                  >
-                    Grad-CAM
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Image Container */}
-            <div className="flex-1 relative flex items-center justify-center p-2 min-h-0 bg-black/20">
-              {activeItem ? (
-                <img 
-                  src={
-                    heatmapView === 'ig' && activeItem.results?.ig_heatmap 
-                      ? `http://localhost:8686/${activeItem.results.ig_heatmap}` 
-                      : heatmapView === 'gradcam' && activeItem.results?.gradcam_heatmap
-                        ? `http://localhost:8686/${activeItem.results.gradcam_heatmap}`
-                        : URL.createObjectURL(activeItem.file)
-                  } 
-                  alt="Scan viewer" 
-                  className="max-w-full max-h-full object-contain"
-                />
-              ) : (
-                <div className="text-textMuted flex flex-col items-center">
-                  <Brain size={48} className="mb-4 opacity-20" />
-                  <p>Select a scan from the image queue to view</p>
-                </div>
-              )}
-            </div>
-            
-            {/* Legends Overlay */}
-            {activeItem && activeItem.status === 'completed' && heatmapView !== 'original' && (
-              <div className="absolute bottom-20 right-4 bg-surface/95 backdrop-blur-md border border-border p-3 rounded-lg shadow-xl text-xs z-20 w-48">
-                <p className="font-bold text-gray-200 mb-2 border-b border-border/50 pb-1.5">
-                  {heatmapView === 'ig' ? 'IG Heatmap Legend' : 'Grad-CAM Legend'}
-                </p>
-                {heatmapView === 'ig' ? (
-                  <div className="space-y-2.5 mt-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-sm bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]"></div>
-                      <span className="text-gray-300 font-medium">Positive Evidence</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-sm bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"></div>
-                      <span className="text-gray-300 font-medium">Negative Evidence</span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2 mt-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-full h-3 rounded-sm bg-gradient-to-r from-blue-500 via-green-500 to-red-500"></div>
-                    </div>
-                    <div className="flex justify-between text-gray-400 font-medium">
-                      <span>Low</span>
-                      <span>High Activation</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-            
-            {/* Validation Action Footer */}
-            {activeItem && activeItem.status === 'completed' && (
-              <div className="bg-surface/50 border-t border-border p-3 flex justify-center items-center gap-4 z-20">
-                {!activeItem.validationStatus ? (
-                  <>
-                    <button onClick={() => handleValidation('accept')} className="bg-green-600 hover:bg-green-500 text-white px-6 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-lg shadow-green-900/20 transition-all hover:-translate-y-0.5">
-                      <CheckCircle size={16} /> Accept Diagnosis
-                    </button>
-                    <button onClick={() => handleValidation('override')} className="bg-red-900/50 hover:bg-red-600 text-red-100 border border-red-800 hover:border-red-500 px-6 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-all hover:-translate-y-0.5">
-                      <AlertTriangle size={16} /> Override
-                    </button>
-                  </>
-                ) : (
-                  <div className="flex items-center gap-2 px-6 py-2 bg-background/80 rounded-lg border border-border shadow-inner">
-                    {activeItem.validationStatus === 'accepted' ? (
-                      <span className="text-green-400 flex items-center gap-2 font-medium text-sm"><CheckCircle size={16} /> Diagnosis Accepted</span>
-                    ) : (
-                      <span className="text-red-400 flex items-center gap-2 font-medium text-sm"><AlertTriangle size={16} /> Diagnosis Overridden</span>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
+            {renderScanViewerContent(false)}
           </div>
 
         </div>
