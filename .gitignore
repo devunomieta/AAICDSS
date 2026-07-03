@@ -217,3 +217,4 @@ medrax-backend.service
 docker-compose.yml
 web_platform/backend/Dockerfile
 web_platform/frontend/Dockerfile
+REPORTS/

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { Activity, BarChart2, Database, MessageSquare, Settings, Bell, LogOut, Info } from 'lucide-react';
+import aIcon from './assets/A-Icon.png';
 import DiagnosticWorkstation from './pages/DiagnosticWorkstation';
 import Dashboard from './pages/Dashboard';
 import Feedback from './pages/Feedback';
@@ -20,7 +21,7 @@ function Sidebar({ onLogout, userRole }: SidebarProps) {
   return (
     <div className="w-64 bg-background border-r border-border h-screen flex flex-col p-4 fixed left-0 top-0">
       <div className="flex items-center gap-3 text-primary font-bold text-xl mb-10 mt-2 px-2">
-        <Activity size={28} />
+        <img src={aIcon} alt="AffiongAI Icon" className="w-8 h-8 object-contain" />
         <span>AffiongAI</span>
       </div>
 
