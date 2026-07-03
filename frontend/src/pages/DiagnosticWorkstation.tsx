@@ -141,7 +141,25 @@ export default function DiagnosticWorkstation() {
     }
   };
 
-  const generateCaseId = (input: string) => {
+  const getCaseIdPrefix = () => {
+    const today = new Date();
+    const dd = String(today.getDate()).padStart(2, '0');
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const yy = String(today.getFullYear()).slice(-2);
+    const dateStr = `${dd}${mm}${yy}`;
+    
+    let sn = 1;
+    const storedDate = localStorage.getItem('daily_case_date');
+    if (storedDate === dateStr) {
+      sn = parseInt(localStorage.getItem('daily_case_sn') || '0') + 1;
+    }
+    return `${dateStr}-(${sn})-`;
+  };
+
+  const generateFullCaseId = (input: string) => {
+    const prefix = getCaseIdPrefix();
+    
+    // Increment for next time
     const today = new Date();
     const dd = String(today.getDate()).padStart(2, '0');
     const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -156,14 +174,14 @@ export default function DiagnosticWorkstation() {
     localStorage.setItem('daily_case_date', dateStr);
     localStorage.setItem('daily_case_sn', sn.toString());
 
-    return `${dateStr}-(${sn})-${input}`;
+    return `${prefix}${input}`;
   };
 
   const startSession = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!sessionCaseId || !sessionUploadType) return;
     
-    const formattedId = generateCaseId(sessionCaseId);
+    const formattedId = generateFullCaseId(sessionCaseId);
     setSessionCaseId(formattedId);
     
     setIsSessionActive(true);
@@ -479,15 +497,20 @@ export default function DiagnosticWorkstation() {
             <h2 className="text-xl font-bold text-white mb-4">Initialize Upload Session</h2>
             <form onSubmit={startSession} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Case ID</label>
-                <input 
-                  type="text" 
-                  value={sessionCaseId}
-                  onChange={e => setSessionCaseId(e.target.value)}
-                  placeholder="e.g. CASE-10293"
-                  className="w-full bg-background border border-border rounded-lg p-2.5 text-white focus:ring-primary focus:border-primary"
-                  required
-                />
+                <label className="block text-sm font-medium text-gray-300 mb-1">Case Identifier</label>
+                <div className="flex">
+                  <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-border bg-surface text-gray-400 text-sm font-mono whitespace-nowrap">
+                    {getCaseIdPrefix()}
+                  </span>
+                  <input 
+                    type="text" 
+                    value={sessionCaseId}
+                    onChange={e => setSessionCaseId(e.target.value)}
+                    placeholder="e.g. 10293"
+                    className="w-full bg-background border border-border rounded-r-lg p-2.5 text-white focus:ring-primary focus:border-primary"
+                    required
+                  />
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">Upload Type</label>

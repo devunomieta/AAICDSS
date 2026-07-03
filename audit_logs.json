@@ -28,5 +28,11 @@
         "action": "Case Started",
         "user": "radiologist",
         "details": "Started single case TEST5-030726"
+    },
+    {
+        "timestamp": 1783086127.0210888,
+        "action": "User Login",
+        "user": "radiologist",
+        "details": "Successfully authenticated via Demo Account"
     }
 ]
