@@ -118,5 +118,11 @@
         "action": "Diagnosis Accepted",
         "user": "radiologist",
         "details": "Case: 030726-(3)-testing - Accepted: Infiltration"
+    },
+    {
+        "timestamp": 1783094163.9884064,
+        "action": "Case Started",
+        "user": "radiologist",
+        "details": "Started single case 030726-(4)-testingagain"
     }
 ]
