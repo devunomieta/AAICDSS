@@ -47,43 +47,32 @@ export default function DiagnosticWorkstation() {
   const [showEndSessionWarning, setShowEndSessionWarning] = useState(false);
 
   React.useEffect(() => {
-    // Restore session from localStorage if exists
-    const savedSession = localStorage.getItem('active_diagnostic_session');
-    if (savedSession) {
-      try {
-        const data = JSON.parse(savedSession);
-        if (data.isSessionActive) {
+    // Restore session from IndexedDB if exists
+    import('idb-keyval').then(({ get }) => {
+      get('active_diagnostic_session').then(data => {
+        if (data && data.isSessionActive) {
           setSessionCaseId(data.sessionCaseId);
           setSessionUploadType(data.sessionUploadType);
           setIsSessionActive(true);
-          
-          let droppedFiles = false;
-          const restoredBatch = data.batch.filter((item: any) => {
-             if (item.serverPath) return true;
-             droppedFiles = true;
-             return false;
-          });
-          
-          setBatch(restoredBatch);
-          if (restoredBatch.length > 0) setActiveIndex(0);
-          if (droppedFiles) setShowDroppedWarning(true);
+          setBatch(data.batch || []);
+          if (data.batch && data.batch.length > 0) setActiveIndex(0);
         }
-      } catch (err) {
-        console.error("Failed to restore session", err);
-      }
-    }
+      }).catch(err => console.error("Failed to restore session from IDB", err));
+    });
   }, []);
 
   React.useEffect(() => {
-    // Save session to localStorage
+    // Save session to IndexedDB
     if (isSessionActive) {
-      const sessionData = {
-        sessionCaseId,
-        sessionUploadType,
-        isSessionActive,
-        batch: batch.map(b => ({ ...b, file: undefined })) // omit file object
-      };
-      localStorage.setItem('active_diagnostic_session', JSON.stringify(sessionData));
+      import('idb-keyval').then(({ set }) => {
+        const sessionData = {
+          sessionCaseId,
+          sessionUploadType,
+          isSessionActive,
+          batch
+        };
+        set('active_diagnostic_session', sessionData).catch(err => console.error("IDB save error", err));
+      });
     }
   }, [isSessionActive, sessionCaseId, sessionUploadType, batch]);
 
@@ -129,7 +118,7 @@ export default function DiagnosticWorkstation() {
     setActiveIndex(null);
     setShowEndSessionWarning(false);
     setShowDroppedWarning(false);
-    localStorage.removeItem('active_diagnostic_session');
+    import('idb-keyval').then(({ del }) => del('active_diagnostic_session'));
   };
 
   const attemptEndSession = () => {
