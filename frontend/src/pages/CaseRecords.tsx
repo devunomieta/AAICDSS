@@ -183,8 +183,8 @@ export default function CaseRecords({ userRole, userName }: Props) {
 
       {/* Case Details Modal */}
       {selectedCase && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-8 backdrop-blur-sm">
-          <div className="bg-surface border border-border rounded-xl w-full max-w-5xl h-[80vh] flex flex-col shadow-2xl relative">
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-2 md:p-4 backdrop-blur-sm">
+          <div className="bg-surface border border-border rounded-xl w-full max-w-6xl max-h-[95vh] md:max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
             <div className="flex items-center justify-between p-6 border-b border-border shrink-0">
               <div>
                 <h2 className="text-2xl font-bold text-white">Case Details: {selectedCase.case_id}</h2>
@@ -195,9 +195,9 @@ export default function CaseRecords({ userRole, userName }: Props) {
               </button>
             </div>
             
-            <div className="flex-1 overflow-hidden flex">
+            <div className="flex-1 overflow-y-auto md:overflow-hidden flex flex-col md:flex-row">
               {/* Left: Images */}
-              <div className="w-1/2 border-r border-border p-6 overflow-y-auto">
+              <div className="w-full md:w-1/2 border-b md:border-b-0 md:border-r border-border p-4 md:p-6 overflow-y-visible md:overflow-y-auto">
                 <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><FileImage size={20} /> Scans</h3>
                 <div className="grid grid-cols-2 gap-4">
                   {selectedCase.results?.images && selectedCase.results.images.length > 0 ? (
@@ -223,7 +223,7 @@ export default function CaseRecords({ userRole, userName }: Props) {
               </div>
               
               {/* Right: Report */}
-              <div className="w-1/2 p-6 overflow-y-auto">
+              <div className="w-full md:w-1/2 p-4 md:p-6 overflow-y-visible md:overflow-y-auto">
                 <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><FileText size={20} /> Diagnostic Report</h3>
                 <div className="bg-background rounded-lg p-5 border border-border">
                   {selectedCase.results?.report ? (
@@ -244,7 +244,7 @@ export default function CaseRecords({ userRole, userName }: Props) {
       )}
 
 
-      <div className="flex justify-between items-end mb-6 shrink-0">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-6 gap-4 shrink-0">
         <div>
           <h1 className="text-3xl font-bold text-white tracking-tight">Case Records</h1>
           <p className="text-textMuted mt-1">Review historical diagnostics and associated reports</p>
@@ -301,8 +301,8 @@ export default function CaseRecords({ userRole, userName }: Props) {
         </div>
 
         {/* Table */}
-        <div className="flex-1 overflow-auto">
-          <table className="w-full text-left border-collapse">
+        <div className="flex-1 overflow-x-auto">
+          <table className="w-full min-w-[800px] text-left border-collapse">
             <thead className="bg-surface/50 text-xs uppercase text-textMuted sticky top-0 z-10 shadow-sm backdrop-blur-md border-b border-border">
               {activeTab === 'active' ? (
                 <tr>

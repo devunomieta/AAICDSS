@@ -234,7 +234,7 @@ export default function DiagnosticWorkstation() {
       />
 
       {/* Header */}
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
           <h1 className="text-3xl font-bold text-white tracking-tight">Diagnostic Workstation</h1>
           <div className="flex items-center gap-4 mt-1">
@@ -262,10 +262,10 @@ export default function DiagnosticWorkstation() {
         )}
       </div>
 
-      <div className="flex gap-6 flex-1 h-[calc(100vh-140px)]">
+      <div className="flex flex-col lg:flex-row gap-6 flex-1 h-auto lg:h-[calc(100vh-140px)]">
         
         {/* Left Column: Image Queue */}
-        <div className="w-1/3 flex flex-col gap-4">
+        <div className="w-full lg:w-1/3 flex flex-col gap-4">
           <div className="bg-background border border-border rounded-xl p-5 flex-1 flex flex-col">
             <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
               <FileImage size={20} className="text-primary" />
@@ -354,7 +354,7 @@ export default function DiagnosticWorkstation() {
         </div>
 
         {/* Right Column: AI Report (Top) & Viewer (Bottom) */}
-        <div className="w-2/3 flex flex-col gap-4">
+        <div className="w-full lg:w-2/3 flex flex-col gap-4">
           
           {/* AI Report Box (Moved to Top) */}
           <div className="bg-background border border-border rounded-xl h-64 p-5 overflow-y-auto shrink-0 flex flex-col">

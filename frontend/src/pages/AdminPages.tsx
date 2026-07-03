@@ -25,7 +25,7 @@ export function ManageSystem() {
         <p className="text-textMuted mt-1">Configure users, global settings, and view system audit logs.</p>
       </div>
 
-      <div className="flex gap-4 mb-6 border-b border-border pb-2">
+      <div className="flex gap-4 mb-6 border-b border-border pb-2 overflow-x-auto whitespace-nowrap scrollbar-hide">
         <button 
           onClick={() => setActiveTab('users')} 
           className={`flex items-center gap-2 px-4 py-2 font-medium rounded-lg transition-colors ${activeTab === 'users' ? 'bg-primary/20 text-primary' : 'text-textMuted hover:text-white'}`}
@@ -96,8 +96,8 @@ export function ManageSystem() {
         )}
 
         {activeTab === 'audit' && (
-          <div className="bg-surface border border-border rounded-xl overflow-hidden">
-            <table className="w-full text-left">
+          <div className="bg-surface border border-border rounded-xl overflow-x-auto">
+            <table className="w-full text-left min-w-[600px]">
               <thead className="bg-background text-textMuted text-sm font-medium uppercase tracking-wider">
                 <tr>
                   <th className="p-4 border-b border-border">Time</th>
@@ -221,7 +221,7 @@ export function ModelRetraining() {
       </div>
 
       <div className="bg-surface border border-border rounded-xl p-8 flex-1">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
           <h2 className="text-xl font-bold text-white">Live Pipeline Execution</h2>
           <button 
             onClick={handleStart}

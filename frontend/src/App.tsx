@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { Activity, BarChart2, Database, MessageSquare, Settings, Bell, LogOut, Info, ChevronLeft, ChevronRight, FolderClock, Users } from 'lucide-react';
+import { Activity, BarChart2, Database, MessageSquare, Settings, Bell, LogOut, Info, ChevronLeft, ChevronRight, FolderClock, Users, Menu, X } from 'lucide-react';
 import axios from 'axios';
 import aIcon from './assets/A-Icon.png';
 import { useToast } from './components/ToastContext';
@@ -18,9 +18,11 @@ interface SidebarProps {
   userRole: 'radiologist' | 'compliance' | 'admin' | null;
   isCollapsed: boolean;
   setIsCollapsed: (collapsed: boolean) => void;
+  isMobileMenuOpen: boolean;
+  setIsMobileMenuOpen: (open: boolean) => void;
 }
 
-function Sidebar({ onLogout, userRole, isCollapsed, setIsCollapsed }: SidebarProps) {
+function Sidebar({ onLogout, userRole, isCollapsed, setIsCollapsed, isMobileMenuOpen, setIsMobileMenuOpen }: SidebarProps) {
   const location = useLocation();
   const { showToast } = useToast();
   const isActive = (path: string) => location.pathname === path || (path === '/dashboard' && location.pathname === '/');
@@ -43,34 +45,50 @@ function Sidebar({ onLogout, userRole, isCollapsed, setIsCollapsed }: SidebarPro
   }, []);
   
   return (
-    <div className={`${isCollapsed ? 'w-20' : 'w-64'} bg-background border-r border-border h-screen flex flex-col py-4 fixed left-0 top-0 transition-all duration-300 z-50`}>
+    <>
+      {/* Mobile overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+      <div className={`${isCollapsed ? 'w-20' : 'w-64'} bg-background border-r border-border h-screen flex flex-col py-4 fixed left-0 top-0 transition-transform duration-300 z-50 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
       <div className={`flex items-center text-primary font-bold text-xl mb-10 mt-2 px-6 ${isCollapsed ? 'justify-center px-0' : 'gap-3'}`}>
         <img src={aIcon} alt="AffiongAI Icon" className="w-8 h-8 object-contain shrink-0" />
+        {!isCollapsed && <span className="text-white hidden md:block">AffiongAI</span>}
       </div>
       
       <button 
         onClick={() => setIsCollapsed(!isCollapsed)}
-        className="absolute -right-3 top-6 bg-surface border border-border rounded-full p-1 text-textMuted hover:text-white hover:bg-primary z-50 transition-colors"
+        className="absolute -right-3 top-6 bg-surface border border-border rounded-full p-1 text-textMuted hover:text-white hover:bg-primary z-50 transition-colors hidden md:block"
       >
         {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
       </button>
+      
+      <button 
+        onClick={() => setIsMobileMenuOpen(false)}
+        className="absolute right-4 top-4 text-textMuted hover:text-white md:hidden"
+      >
+        <X size={24} />
+      </button>
 
       <nav className="flex flex-col gap-2">
-        <Link to="/dashboard" className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive('/dashboard') ? 'bg-primary text-white' : 'text-textMuted hover:bg-surface hover:text-white'} ${isCollapsed ? 'justify-center mx-2' : 'gap-3 mx-4'}`}>
+        <Link to="/dashboard" onClick={() => setIsMobileMenuOpen(false)} className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive('/dashboard') ? 'bg-primary text-white' : 'text-textMuted hover:bg-surface hover:text-white'} ${isCollapsed ? 'justify-center mx-2' : 'gap-3 mx-4'}`}>
           <BarChart2 size={20} className="shrink-0" />
           {!isCollapsed && <span className="font-medium">Analytics</span>}
         </Link>
         {userRole === 'radiologist' && (
-          <Link to="/diagnostic" className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive('/diagnostic') ? 'bg-primary text-white' : 'text-textMuted hover:bg-surface hover:text-white'} ${isCollapsed ? 'justify-center mx-2' : 'gap-3 mx-4'}`}>
+          <Link to="/diagnostic" onClick={() => setIsMobileMenuOpen(false)} className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive('/diagnostic') ? 'bg-primary text-white' : 'text-textMuted hover:bg-surface hover:text-white'} ${isCollapsed ? 'justify-center mx-2' : 'gap-3 mx-4'}`}>
             <Activity size={20} className="shrink-0" />
             {!isCollapsed && <span className="font-medium">Inference</span>}
           </Link>
         )}
-        <Link to="/cases" className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive('/cases') ? 'bg-primary text-white' : 'text-textMuted hover:bg-surface hover:text-white'} ${isCollapsed ? 'justify-center mx-2' : 'gap-3 mx-4'}`}>
+        <Link to="/cases" onClick={() => setIsMobileMenuOpen(false)} className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive('/cases') ? 'bg-primary text-white' : 'text-textMuted hover:bg-surface hover:text-white'} ${isCollapsed ? 'justify-center mx-2' : 'gap-3 mx-4'}`}>
           <FolderClock size={20} className="shrink-0" />
           {!isCollapsed && <span className="font-medium">Case Records</span>}
         </Link>
-        <Link to="/feedback" className={`flex items-center px-4 py-3 rounded-lg transition-colors relative ${isActive('/feedback') ? 'bg-primary text-white' : 'text-textMuted hover:bg-surface hover:text-white'} ${isCollapsed ? 'justify-center mx-2' : 'gap-3 mx-4'}`}>
+        <Link to="/feedback" onClick={() => setIsMobileMenuOpen(false)} className={`flex items-center px-4 py-3 rounded-lg transition-colors relative ${isActive('/feedback') ? 'bg-primary text-white' : 'text-textMuted hover:bg-surface hover:text-white'} ${isCollapsed ? 'justify-center mx-2' : 'gap-3 mx-4'}`}>
           <div className="relative">
             <MessageSquare size={20} className="shrink-0" />
             {pendingFeedback > 0 && (
@@ -81,7 +99,7 @@ function Sidebar({ onLogout, userRole, isCollapsed, setIsCollapsed }: SidebarPro
           </div>
           {!isCollapsed && <span className="font-medium">Feedback Board</span>}
         </Link>
-        <button className={`flex items-center px-4 py-3 text-textMuted hover:bg-surface hover:text-white rounded-lg transition-colors text-left ${isCollapsed ? 'justify-center mx-2' : 'gap-3 mx-4 w-[calc(100%-2rem)]'}`} onClick={() => showToast('PACS Gateway coming soon')}>
+        <button className={`flex items-center px-4 py-3 text-textMuted hover:bg-surface hover:text-white rounded-lg transition-colors text-left ${isCollapsed ? 'justify-center mx-2' : 'gap-3 mx-4 w-[calc(100%-2rem)]'}`} onClick={() => { showToast('PACS Gateway coming soon'); setIsMobileMenuOpen(false); }}>
           <Database size={20} className="shrink-0" />
           {!isCollapsed && <span className="font-medium">PACS Gateway</span>}
         </button>
@@ -89,11 +107,11 @@ function Sidebar({ onLogout, userRole, isCollapsed, setIsCollapsed }: SidebarPro
         {userRole === 'admin' && (
           <>
             <div className={`mt-4 mb-2 text-xs font-bold text-gray-500 uppercase tracking-wider ${isCollapsed ? 'text-center' : 'ml-6'}`}>Admin</div>
-            <Link to="/admin/retrain" className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive('/admin/retrain') ? 'bg-primary text-white' : 'text-textMuted hover:bg-surface hover:text-white'} ${isCollapsed ? 'justify-center mx-2' : 'gap-3 mx-4'}`}>
+            <Link to="/admin/retrain" onClick={() => setIsMobileMenuOpen(false)} className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive('/admin/retrain') ? 'bg-primary text-white' : 'text-textMuted hover:bg-surface hover:text-white'} ${isCollapsed ? 'justify-center mx-2' : 'gap-3 mx-4'}`}>
               <Database size={20} className="shrink-0" />
               {!isCollapsed && <span className="font-medium">Retraining Pipeline</span>}
             </Link>
-            <Link to="/admin/manage" className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive('/admin/manage') ? 'bg-primary text-white' : 'text-textMuted hover:bg-surface hover:text-white'} ${isCollapsed ? 'justify-center mx-2' : 'gap-3 mx-4'}`}>
+            <Link to="/admin/manage" onClick={() => setIsMobileMenuOpen(false)} className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive('/admin/manage') ? 'bg-primary text-white' : 'text-textMuted hover:bg-surface hover:text-white'} ${isCollapsed ? 'justify-center mx-2' : 'gap-3 mx-4'}`}>
               <Settings size={20} className="shrink-0" />
               {!isCollapsed && <span className="font-medium">Manage System</span>}
             </Link>
@@ -127,6 +145,7 @@ function Sidebar({ onLogout, userRole, isCollapsed, setIsCollapsed }: SidebarPro
         </button>
       </div>
     </div>
+    </>
   );
 }
 
@@ -134,6 +153,7 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState<'radiologist' | 'compliance' | 'admin' | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleLogin = (role: 'radiologist' | 'compliance' | 'admin') => {
     setUserRole(role);
@@ -152,9 +172,31 @@ function App() {
   return (
     <BrowserRouter>
       <div className="flex bg-surface min-h-screen">
-        <Sidebar onLogout={handleLogout} userRole={userRole} isCollapsed={isSidebarCollapsed} setIsCollapsed={setIsSidebarCollapsed} />
-        <main className={`${isSidebarCollapsed ? 'ml-20' : 'ml-64'} flex-1 p-8 h-screen overflow-y-auto transition-all duration-300`}>
-          <Routes>
+        <Sidebar 
+          onLogout={handleLogout} 
+          userRole={userRole} 
+          isCollapsed={isSidebarCollapsed} 
+          setIsCollapsed={setIsSidebarCollapsed} 
+          isMobileMenuOpen={isMobileMenuOpen}
+          setIsMobileMenuOpen={setIsMobileMenuOpen}
+        />
+        <main className={`ml-0 flex flex-col ${isSidebarCollapsed ? 'md:ml-20' : 'md:ml-64'} flex-1 h-screen overflow-hidden transition-all duration-300 relative`}>
+          {/* Mobile Top Bar */}
+          <div className="md:hidden flex items-center justify-between bg-surface border-b border-border p-4 shrink-0 shadow-sm z-30">
+            <div className="flex items-center gap-2">
+              <img src={aIcon} alt="AffiongAI" className="w-8 h-8 object-contain" />
+              <span className="font-bold text-white text-lg">AffiongAI</span>
+            </div>
+            <button 
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="bg-background border border-border p-2 rounded-lg text-white"
+            >
+              <Menu size={24} />
+            </button>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto p-4 md:p-8">
+            <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/dashboard" element={<Dashboard />} />
             {userRole === 'radiologist' && <Route path="/diagnostic" element={<DiagnosticWorkstation />} />}
@@ -165,7 +207,8 @@ function App() {
             {userRole === 'admin' && <Route path="/admin/retrain" element={<ModelRetraining />} />}
             {userRole === 'admin' && <Route path="/admin/manage" element={<ManageSystem />} />}
             <Route path="*" element={<Navigate to="/" />} />
-          </Routes>
+            </Routes>
+          </div>
         </main>
       </div>
     </BrowserRouter>

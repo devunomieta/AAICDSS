@@ -94,8 +94,8 @@ export default function Feedback({ userRole }: FeedbackProps) {
 
       <div className="bg-background border border-border rounded-xl flex-1 flex flex-col overflow-hidden shadow-sm">
         {/* Toolbar */}
-        <div className="p-4 border-b border-border flex justify-between items-center bg-surface/30">
-          <div className="flex items-center gap-4 w-1/2 max-w-md">
+        <div className="p-4 border-b border-border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-surface/30">
+          <div className="flex items-center gap-4 w-full sm:w-1/2 max-w-md">
             <div className="relative flex-1">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Search size={16} className="text-gray-500" />
@@ -110,8 +110,8 @@ export default function Feedback({ userRole }: FeedbackProps) {
             </div>
           </div>
           
-          <div className="flex items-center gap-3">
-            <div className="flex items-center bg-background border border-border rounded-lg px-3 py-2 text-sm">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
+            <div className="flex items-center bg-background border border-border rounded-lg px-3 py-2 text-sm w-full sm:w-auto">
               <Filter size={16} className="text-gray-500 mr-2" />
               <select 
                 value={statusFilter} 
@@ -128,7 +128,7 @@ export default function Feedback({ userRole }: FeedbackProps) {
             <select 
               value={sortOrder} 
               onChange={(e) => { setSortOrder(e.target.value as any); setCurrentPage(1); }}
-              className="bg-background border border-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary"
+              className="bg-background border border-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary w-full sm:w-auto"
             >
               <option value="newest">Newest First</option>
               <option value="oldest">Oldest First</option>
@@ -137,14 +137,16 @@ export default function Feedback({ userRole }: FeedbackProps) {
         </div>
 
         {/* Table Header */}
-        <div className="grid grid-cols-6 gap-4 bg-surface p-4 border-b border-border text-xs font-bold text-gray-400 uppercase tracking-wider">
-          <div>Date</div>
-          <div>Image Reference</div>
-          <div>AI Prediction</div>
-          <div>Radiologist Override</div>
-          <div>Status</div>
-          <div className="text-right">Action</div>
-        </div>
+        <div className="overflow-x-auto">
+          <div className="min-w-[800px]">
+            <div className="grid grid-cols-6 gap-4 bg-surface p-4 border-b border-border text-xs font-bold text-gray-400 uppercase tracking-wider">
+              <div>Case ID</div>
+              <div>Submitted</div>
+              <div>Diagnosis Override</div>
+              <div>Feedback Notes</div>
+              <div>Status</div>
+              <div className="text-right">Action</div>
+            </div>
 
         {/* Table Body */}
         <div className="flex-1 overflow-y-auto p-2 space-y-2">
@@ -183,6 +185,8 @@ export default function Feedback({ userRole }: FeedbackProps) {
               </div>
             ))
           )}
+        </div>
+          </div>
         </div>
         
         {/* Pagination */}
