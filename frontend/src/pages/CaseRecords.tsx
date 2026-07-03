@@ -202,7 +202,7 @@ export default function CaseRecords({ userRole, userName }: Props) {
                 <div className="grid grid-cols-2 gap-4">
                   {selectedCase.results?.images && selectedCase.results.images.length > 0 ? (
                     selectedCase.results.images.map((img: string, idx: number) => {
-                      const filename = img.split('/').pop() || img.split('\\').pop();
+                      const filename = img.replace(/\\/g, '/').split('/').pop();
                       return (
                         <div key={idx} className="bg-background rounded-lg border border-border aspect-square overflow-hidden flex items-center justify-center relative group">
                           <img 

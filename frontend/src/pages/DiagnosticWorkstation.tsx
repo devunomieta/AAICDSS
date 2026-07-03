@@ -14,6 +14,8 @@ interface BatchItem {
     gradcam?: string;
     report?: string;
   };
+  serverPath?: string;
+  validationStatus?: 'accepted' | 'overridden';
 }
 
 export default function DiagnosticWorkstation() {
@@ -132,7 +134,7 @@ export default function DiagnosticWorkstation() {
         const uploadRes = await axios.post('http://localhost:8686/api/upload', formData);
         const serverPath = uploadRes.data.paths[0];
         
-        setBatch(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'processing', progress: 40 } : item));
+        setBatch(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'processing', progress: 40, serverPath } : item));
         
         const inferData = new FormData();
         inferData.append('image_path', serverPath);
@@ -178,6 +180,41 @@ export default function DiagnosticWorkstation() {
   };
 
   const activeItem = activeIndex !== null ? batch[activeIndex] : null;
+
+  const handleValidation = async (type: 'accept' | 'override') => {
+    if (!activeItem || activeIndex === null) return;
+    if (activeItem.validationStatus) return; // Already validated
+
+    const topPred = activeItem.results?.predictions 
+      ? Object.keys(activeItem.results.predictions)[0] 
+      : 'Unknown';
+      
+    const actual_decision = type === 'accept' ? `Accepted: ${topPred}` : `Overridden: Needs review`;
+    
+    // Optimistic UI update
+    setBatch(prev => prev.map((item, idx) => idx === activeIndex ? { ...item, validationStatus: type === 'accept' ? 'accepted' : 'overridden' } : item));
+
+    try {
+      const formData = new FormData();
+      formData.append('image_path', activeItem.serverPath || activeItem.file.name);
+      formData.append('prediction', topPred);
+      formData.append('actual_decision', actual_decision);
+      formData.append('user', 'radiologist');
+      
+      await axios.post('http://localhost:8686/api/feedback', formData);
+      
+      // Audit Log
+      const auditData = new FormData();
+      auditData.append('action', `Diagnosis ${type === 'accept' ? 'Accepted' : 'Overridden'}`);
+      auditData.append('user', 'radiologist');
+      auditData.append('details', `Case: ${sessionCaseId || 'Unknown'} - ${actual_decision}`);
+      await axios.post('http://localhost:8686/api/audit/log', auditData);
+      
+    } catch (error) {
+      console.error("Failed to submit validation", error);
+      // Revert optimistic update on error if needed, but keeping it simple here
+    }
+  };
 
   return (
     <div className="flex flex-col h-full gap-6 relative">
@@ -405,16 +442,27 @@ export default function DiagnosticWorkstation() {
             )}
             
             {/* Validation Floating Bar */}
-            {activeItem && activeItem.status === 'completed' && (
+            {activeItem && activeItem.status === 'completed' && !activeItem.validationStatus && (
               <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-surface/90 backdrop-blur border border-border px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2">
+                <button onClick={() => handleValidation('accept')} className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2">
                   <CheckCircle size={16} /> Accept
                 </button>
                 <div className="w-px h-8 bg-border"></div>
-                <button className="bg-red-900/50 hover:bg-red-600 text-red-100 border border-red-800 hover:border-red-500 px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-colors">
+                <button onClick={() => handleValidation('override')} className="bg-red-900/50 hover:bg-red-600 text-red-100 border border-red-800 hover:border-red-500 px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-colors">
                   <AlertTriangle size={16} /> Override
                 </button>
               </div>
+            )}
+            
+            {/* Validation Status Indicator */}
+            {activeItem && activeItem.status === 'completed' && activeItem.validationStatus && (
+               <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-surface/90 backdrop-blur border border-border px-6 py-3 rounded-2xl shadow-xl flex items-center gap-3">
+                 {activeItem.validationStatus === 'accepted' ? (
+                   <span className="text-green-400 flex items-center gap-2 font-medium text-sm"><CheckCircle size={16} /> Diagnosis Accepted</span>
+                 ) : (
+                   <span className="text-red-400 flex items-center gap-2 font-medium text-sm"><AlertTriangle size={16} /> Diagnosis Overridden</span>
+                 )}
+               </div>
             )}
           </div>
 

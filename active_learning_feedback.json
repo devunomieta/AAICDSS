@@ -1,0 +1,10 @@
+[
+    {
+        "timestamp": 1783082784.8552074,
+        "user": "radiologist",
+        "image": "pneumonia5.jpg",
+        "ai_prediction": "Lung Opacity",
+        "radiologist_decision": "Accepted: Lung Opacity",
+        "status": "Accepted"
+    }
+]

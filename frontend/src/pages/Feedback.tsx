@@ -159,7 +159,7 @@ export default function Feedback({ userRole }: FeedbackProps) {
               <div key={idx} className="grid grid-cols-6 gap-4 items-center p-4 bg-surface/30 hover:bg-surface/60 border border-transparent hover:border-border rounded-lg transition-colors">
                 <div className="text-xs text-textMuted">{formatDate(item.timestamp)}</div>
                 <div className="font-mono text-xs text-primary font-bold truncate" title={item.image}>
-                  {item.image.split('/').pop() || item.image.split('\\').pop()}
+                  {item.image.replace(/\\/g, '/').split('/').pop()}
                 </div>
                 <div className="text-sm text-gray-300 truncate" title={item.ai_prediction}>{item.ai_prediction}</div>
                 <div className="text-sm text-gray-300 italic truncate" title={item.radiologist_decision}>{item.radiologist_decision}</div>
