@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { Activity, BarChart2, Database, MessageSquare, Settings, Bell, LogOut, Info, ChevronLeft, ChevronRight, FolderClock } from 'lucide-react';
+import { Activity, BarChart2, Database, MessageSquare, Settings, Bell, LogOut, Info, ChevronLeft, ChevronRight, FolderClock, Users } from 'lucide-react';
 import axios from 'axios';
 import aIcon from './assets/A-Icon.png';
 import { useToast } from './components/ToastContext';
@@ -11,7 +11,7 @@ import Feedback from './pages/Feedback';
 import SettingsPage from './pages/Settings';
 import Updates from './pages/Updates';
 import Login from './pages/Login';
-import { ModelRetraining, UserManagement, SystemConfig, AuditLogs } from './pages/AdminPages';
+import { ModelRetraining, ManageSystem } from './pages/AdminPages';
 
 interface SidebarProps {
   onLogout: () => void;
@@ -93,17 +93,9 @@ function Sidebar({ onLogout, userRole, isCollapsed, setIsCollapsed }: SidebarPro
               <Database size={20} className="shrink-0" />
               {!isCollapsed && <span className="font-medium">Retraining Pipeline</span>}
             </Link>
-            <Link to="/admin/users" className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive('/admin/users') ? 'bg-primary text-white' : 'text-textMuted hover:bg-surface hover:text-white'} ${isCollapsed ? 'justify-center mx-2' : 'gap-3 mx-4'}`}>
-              <Users size={20} className="shrink-0" />
-              {!isCollapsed && <span className="font-medium">User Management</span>}
-            </Link>
-            <Link to="/admin/config" className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive('/admin/config') ? 'bg-primary text-white' : 'text-textMuted hover:bg-surface hover:text-white'} ${isCollapsed ? 'justify-center mx-2' : 'gap-3 mx-4'}`}>
+            <Link to="/admin/manage" className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive('/admin/manage') ? 'bg-primary text-white' : 'text-textMuted hover:bg-surface hover:text-white'} ${isCollapsed ? 'justify-center mx-2' : 'gap-3 mx-4'}`}>
               <Settings size={20} className="shrink-0" />
-              {!isCollapsed && <span className="font-medium">System Config</span>}
-            </Link>
-            <Link to="/admin/audit" className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive('/admin/audit') ? 'bg-primary text-white' : 'text-textMuted hover:bg-surface hover:text-white'} ${isCollapsed ? 'justify-center mx-2' : 'gap-3 mx-4'}`}>
-              <Activity size={20} className="shrink-0" />
-              {!isCollapsed && <span className="font-medium">Audit Logs</span>}
+              {!isCollapsed && <span className="font-medium">Manage System</span>}
             </Link>
           </>
         )}
@@ -170,14 +162,8 @@ function App() {
             <Route path="/feedback" element={<Feedback userRole={userRole} />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/updates" element={<Updates />} />
-            {userRole === 'admin' && (
-              <>
-                <Route path="/admin/retrain" element={<ModelRetraining />} />
-                <Route path="/admin/users" element={<UserManagement />} />
-                <Route path="/admin/config" element={<SystemConfig />} />
-                <Route path="/admin/audit" element={<AuditLogs />} />
-              </>
-            )}
+            {userRole === 'admin' && <Route path="/admin/retrain" element={<ModelRetraining />} />}
+            {userRole === 'admin' && <Route path="/admin/manage" element={<ManageSystem />} />}
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </main>

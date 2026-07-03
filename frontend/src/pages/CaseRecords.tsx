@@ -96,6 +96,17 @@ export default function CaseRecords({ userRole, userName }: Props) {
       formData.append('reason', deleteReason);
       
       await axios.post(`http://localhost:8686/api/cases/${caseToDelete.case_id}/delete`, formData);
+      
+      try {
+        const auditData = new FormData();
+        auditData.append('action', 'Case Deletion');
+        auditData.append('user', userRole || 'Unknown');
+        auditData.append('details', `Deleted case ${caseToDelete.case_id}. Reason: ${deleteReason || 'None provided'}`);
+        await axios.post('http://localhost:8686/api/audit/log', auditData);
+      } catch (err) {
+        console.error("Audit log failed", err);
+      }
+      
       setCaseToDelete(null);
       setDeleteReason('');
       showToast('Case deleted successfully.', 'success');

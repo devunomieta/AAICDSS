@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Activity, Fingerprint, Mail, Lock, ShieldAlert } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import aLogo from '../assets/A-Logo.png';
 import { useToast } from '../components/ToastContext';
 
@@ -26,15 +27,26 @@ export default function Login({ onLogin }: LoginProps) {
     }
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    let role = 'radiologist';
     if (email === 'compliance@affiong.ai') {
-      onLogin('compliance');
+      role = 'compliance';
     } else if (email === 'admin@affiong.ai') {
-      onLogin('admin');
-    } else {
-      onLogin('radiologist');
+      role = 'admin';
     }
+    
+    try {
+      const formData = new FormData();
+      formData.append('action', 'User Login');
+      formData.append('user', role);
+      formData.append('details', `Successfully authenticated via Demo Account`);
+      await axios.post('http://localhost:8686/api/audit/log', formData);
+    } catch (err) {
+      console.error("Audit log failed", err);
+    }
+
+    onLogin(role as any);
   };
 
   const showFutureWarning = () => {
@@ -125,18 +137,18 @@ export default function Login({ onLogin }: LoginProps) {
             <ShieldAlert size={16} />
             <span>Demo Accounts - Click to Login</span>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <button onClick={() => autofill('radiologist')} className="text-left p-3 rounded-lg border border-border hover:bg-surface transition-colors bg-background">
-              <p className="text-xs text-textMuted uppercase font-bold mb-1">Radiologist</p>
-              <p className="text-sm text-gray-300 break-all">radiologist@affiong.ai</p>
+          <div className="flex flex-col gap-2">
+            <button onClick={() => autofill('radiologist')} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-surface transition-colors bg-background group">
+              <p className="text-sm text-textMuted uppercase font-bold group-hover:text-white transition-colors">Radiologist</p>
+              <p className="text-sm text-gray-400 group-hover:text-primary transition-colors">radiologist@affiong.ai</p>
             </button>
-            <button onClick={() => autofill('compliance')} className="text-left p-3 rounded-lg border border-border hover:bg-surface transition-colors bg-background">
-              <p className="text-xs text-textMuted uppercase font-bold mb-1">Compliance</p>
-              <p className="text-sm text-gray-300 break-all">compliance@affiong.ai</p>
+            <button onClick={() => autofill('compliance')} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-surface transition-colors bg-background group">
+              <p className="text-sm text-textMuted uppercase font-bold group-hover:text-white transition-colors">Compliance</p>
+              <p className="text-sm text-gray-400 group-hover:text-primary transition-colors">compliance@affiong.ai</p>
             </button>
-            <button onClick={() => autofill('admin')} className="text-left p-3 rounded-lg border border-border hover:bg-surface transition-colors bg-background">
-              <p className="text-xs text-textMuted uppercase font-bold mb-1">Admin</p>
-              <p className="text-sm text-gray-300 break-all">admin@affiong.ai</p>
+            <button onClick={() => autofill('admin')} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-surface transition-colors bg-background group">
+              <p className="text-sm text-textMuted uppercase font-bold group-hover:text-white transition-colors">Admin</p>
+              <p className="text-sm text-gray-400 group-hover:text-primary transition-colors">admin@affiong.ai</p>
             </button>
           </div>
         </div>

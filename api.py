@@ -270,3 +270,56 @@ async def approve_feedback(timestamp: float = Form(...)):
         return {"status": "success", "message": "Feedback approved for retraining"}
     else:
         return {"status": "error", "message": "Feedback item not found"}
+
+AUDIT_FILE = "audit_logs.json"
+
+@app.post("/api/audit/log")
+async def log_audit(action: str = Form(...), user: str = Form(...), details: str = Form("")):
+    """Logs system activity for the audit trail."""
+    logs = []
+    if os.path.exists(AUDIT_FILE):
+        with open(AUDIT_FILE, 'r') as f:
+            logs = json.load(f)
+            
+    logs.append({
+        "timestamp": time.time(),
+        "action": action,
+        "user": user,
+        "details": details
+    })
+    
+    with open(AUDIT_FILE, 'w') as f:
+        json.dump(logs, f, indent=4)
+        
+    return {"status": "success"}
+
+@app.get("/api/audit")
+async def get_audit():
+    """Retrieves all audit logs."""
+    if os.path.exists(AUDIT_FILE):
+        with open(AUDIT_FILE, 'r') as f:
+            return json.load(f)
+    return []
+
+import subprocess
+
+STATUS_FILE = "training_status.json"
+
+@app.post("/api/retrain")
+async def start_retraining():
+    """Starts the background retraining script."""
+    # Reset status
+    with open(STATUS_FILE, 'w') as f:
+        json.dump({"status": "starting", "progress": 0, "message": "Triggering pipeline...", "epoch": 0, "loss": None}, f)
+        
+    # Start train.py in background
+    subprocess.Popen(["python", "train.py"])
+    return {"status": "success", "message": "Retraining pipeline triggered."}
+
+@app.get("/api/retrain/status")
+async def get_retrain_status():
+    """Gets the live status of the retraining pipeline."""
+    if os.path.exists(STATUS_FILE):
+        with open(STATUS_FILE, 'r') as f:
+            return json.load(f)
+    return {"status": "idle", "progress": 0, "message": "Ready to start retraining.", "epoch": 0, "loss": None}

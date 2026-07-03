@@ -52,6 +52,13 @@ export default function DiagnosticWorkstation() {
       formData.append('case_id', sessionCaseId);
       formData.append('upload_type', sessionUploadType);
       await axios.post('http://localhost:8686/api/init_case', formData);
+
+      // Audit Log
+      const auditData = new FormData();
+      auditData.append('action', 'Case Started');
+      auditData.append('user', 'radiologist');
+      auditData.append('details', `Started ${sessionUploadType} case ${sessionCaseId}`);
+      await axios.post('http://localhost:8686/api/audit/log', auditData);
     } catch (err) {
       console.error("Failed to initialize case in DB", err);
     }
