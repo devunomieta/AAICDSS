@@ -5,7 +5,7 @@ import aLogo from '../assets/A-Logo.png';
 import { useToast } from '../components/ToastContext';
 
 interface LoginProps {
-  onLogin: (userType: 'radiologist' | 'compliance') => void;
+  onLogin: (userType: 'radiologist' | 'compliance' | 'admin') => void;
 }
 
 export default function Login({ onLogin }: LoginProps) {
@@ -13,13 +13,16 @@ export default function Login({ onLogin }: LoginProps) {
   const [password, setPassword] = useState('');
   const { showToast } = useToast();
 
-  const autofill = (type: 'radiologist' | 'compliance') => {
+  const autofill = (type: 'radiologist' | 'compliance' | 'admin') => {
     if (type === 'radiologist') {
       setEmail('radiologist@affiong.ai');
       setPassword('radio123');
-    } else {
+    } else if (type === 'compliance') {
       setEmail('compliance@affiong.ai');
       setPassword('secure123');
+    } else {
+      setEmail('admin@affiong.ai');
+      setPassword('admin123');
     }
   };
 
@@ -27,6 +30,8 @@ export default function Login({ onLogin }: LoginProps) {
     e.preventDefault();
     if (email === 'compliance@affiong.ai') {
       onLogin('compliance');
+    } else if (email === 'admin@affiong.ai') {
+      onLogin('admin');
     } else {
       onLogin('radiologist');
     }
@@ -120,14 +125,18 @@ export default function Login({ onLogin }: LoginProps) {
             <ShieldAlert size={16} />
             <span>Demo Accounts - Click to Login</span>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <button onClick={() => autofill('radiologist')} className="text-left p-3 rounded-lg border border-border hover:bg-surface transition-colors bg-background">
               <p className="text-xs text-textMuted uppercase font-bold mb-1">Radiologist</p>
-              <p className="text-sm text-gray-300">radiologist@affiong.ai</p>
+              <p className="text-sm text-gray-300 break-all">radiologist@affiong.ai</p>
             </button>
             <button onClick={() => autofill('compliance')} className="text-left p-3 rounded-lg border border-border hover:bg-surface transition-colors bg-background">
-              <p className="text-xs text-textMuted uppercase font-bold mb-1">Compliance Officer</p>
-              <p className="text-sm text-gray-300">compliance@affiong.ai</p>
+              <p className="text-xs text-textMuted uppercase font-bold mb-1">Compliance</p>
+              <p className="text-sm text-gray-300 break-all">compliance@affiong.ai</p>
+            </button>
+            <button onClick={() => autofill('admin')} className="text-left p-3 rounded-lg border border-border hover:bg-surface transition-colors bg-background">
+              <p className="text-xs text-textMuted uppercase font-bold mb-1">Admin</p>
+              <p className="text-sm text-gray-300 break-all">admin@affiong.ai</p>
             </button>
           </div>
         </div>

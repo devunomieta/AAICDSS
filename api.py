@@ -237,3 +237,36 @@ async def save_feedback(image_path: str = Form(...), prediction: str = Form(...)
         json.dump(data, f, indent=4)
         
     return {"status": "success", "message": "Feedback safely recorded."}
+
+@app.get("/api/feedback")
+async def get_feedback():
+    """Retrieves all feedback for the feedback board."""
+    if os.path.exists(FEEDBACK_FILE):
+        with open(FEEDBACK_FILE, 'r') as f:
+            return json.load(f)
+    return []
+
+@app.post("/api/feedback/approve")
+async def approve_feedback(timestamp: float = Form(...)):
+    """Approves a feedback item for model retraining."""
+    if not os.path.exists(FEEDBACK_FILE):
+        return {"status": "error", "message": "No feedback data found"}
+        
+    data = []
+    with open(FEEDBACK_FILE, 'r') as f:
+        data = json.load(f)
+        
+    found = False
+    for item in data:
+        # Convert to float just in case it's passed as a string or slightly off
+        if abs(float(item.get("timestamp", 0)) - float(timestamp)) < 0.001:
+            item["status"] = "Retraining Ready"
+            found = True
+            break
+            
+    if found:
+        with open(FEEDBACK_FILE, 'w') as f:
+            json.dump(data, f, indent=4)
+        return {"status": "success", "message": "Feedback approved for retraining"}
+    else:
+        return {"status": "error", "message": "Feedback item not found"}
