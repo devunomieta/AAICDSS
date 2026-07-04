@@ -30,5 +30,37 @@
         "ai_prediction": "Infiltration",
         "radiologist_decision": "Accepted: Infiltration",
         "status": "Accepted"
+    },
+    {
+        "timestamp": 1783106935.433839,
+        "user": "radiologist",
+        "image": "uploads\\scan_4d958a39d22e4443a33e6e379fc215e6.jpg",
+        "ai_prediction": "Lung Opacity",
+        "radiologist_decision": "Accepted: Lung Opacity",
+        "status": "Accepted"
+    },
+    {
+        "timestamp": 1783107516.3149493,
+        "user": "radiologist",
+        "image": "uploads\\scan_3cc129c66aca4b66b190c2907de7d0dd.png",
+        "ai_prediction": "Lung Opacity",
+        "radiologist_decision": "Overridden: Needs review",
+        "status": "Retraining Ready"
+    },
+    {
+        "timestamp": 1783107679.0625641,
+        "user": "radiologist",
+        "image": "uploads\\scan_cf7375535bdf452dbb441d059fb12507.jpg",
+        "ai_prediction": "Enlarged Cardiomediastinum",
+        "radiologist_decision": "Overridden: Needs review",
+        "status": "Retraining Ready"
+    },
+    {
+        "timestamp": 1783107870.5712886,
+        "user": "radiologist",
+        "image": "uploads\\scan_a708283218b541b1a6027a8d51f98c46.jpg",
+        "ai_prediction": "Lung Opacity",
+        "radiologist_decision": "Accepted: Lung Opacity",
+        "status": "Accepted"
     }
 ]

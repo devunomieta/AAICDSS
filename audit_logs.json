@@ -124,5 +124,95 @@
         "action": "Case Started",
         "user": "radiologist",
         "details": "Started single case 030726-(4)-testingagain"
+    },
+    {
+        "timestamp": 1783104249.6083858,
+        "action": "Case Started",
+        "user": "radiologist",
+        "details": "Started single case 030726-(5)-testagain01"
+    },
+    {
+        "timestamp": 1783104598.9402688,
+        "action": "User Login",
+        "user": "compliance",
+        "details": "Successfully authenticated via Demo Account"
+    },
+    {
+        "timestamp": 1783104641.4867747,
+        "action": "User Login",
+        "user": "admin",
+        "details": "Successfully authenticated via Demo Account"
+    },
+    {
+        "timestamp": 1783106239.3106942,
+        "action": "User Login",
+        "user": "radiologist",
+        "details": "Successfully authenticated via Demo Account"
+    },
+    {
+        "timestamp": 1783106911.1530352,
+        "action": "User Login",
+        "user": "radiologist",
+        "details": "Successfully authenticated via Demo Account"
+    },
+    {
+        "timestamp": 1783106935.531862,
+        "action": "Diagnosis Accepted",
+        "user": "radiologist",
+        "details": "Case: 030726-(5)-testagain01 - Accepted: Lung Opacity"
+    },
+    {
+        "timestamp": 1783106978.6386817,
+        "action": "User Login",
+        "user": "compliance",
+        "details": "Successfully authenticated via Demo Account"
+    },
+    {
+        "timestamp": 1783107028.6662784,
+        "action": "User Login",
+        "user": "admin",
+        "details": "Successfully authenticated via Demo Account"
+    },
+    {
+        "timestamp": 1783107060.180464,
+        "action": "User Login",
+        "user": "radiologist",
+        "details": "Successfully authenticated via Demo Account"
+    },
+    {
+        "timestamp": 1783107112.2234523,
+        "action": "Case Started",
+        "user": "radiologist",
+        "details": "Started batch case 030726-(6)-testatnight"
+    },
+    {
+        "timestamp": 1783107516.5058472,
+        "action": "Diagnosis Overridden",
+        "user": "radiologist",
+        "details": "Case: 030726-(6)-testatnight - Overridden: Needs review"
+    },
+    {
+        "timestamp": 1783107679.426088,
+        "action": "Diagnosis Overridden",
+        "user": "radiologist",
+        "details": "Case: 030726-(6)-testatnight - Overridden: Needs review"
+    },
+    {
+        "timestamp": 1783107870.6619234,
+        "action": "Diagnosis Accepted",
+        "user": "radiologist",
+        "details": "Case: 030726-(6)-testatnight - Accepted: Lung Opacity"
+    },
+    {
+        "timestamp": 1783107919.0555637,
+        "action": "User Login",
+        "user": "compliance",
+        "details": "Successfully authenticated via Demo Account"
+    },
+    {
+        "timestamp": 1783107957.7569609,
+        "action": "User Login",
+        "user": "admin",
+        "details": "Successfully authenticated via Demo Account"
     }
 ]
