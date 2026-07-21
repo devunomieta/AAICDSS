@@ -214,5 +214,23 @@
         "action": "User Login",
         "user": "admin",
         "details": "Successfully authenticated via Demo Account"
+    },
+    {
+        "timestamp": 1784590540.1633472,
+        "action": "View_Case",
+        "user": "Dr. Test",
+        "details": "Viewed case X"
+    },
+    {
+        "timestamp": 1784591048.2506642,
+        "action": "View_Case",
+        "user": "Dr. Test",
+        "details": "Viewed case X"
+    },
+    {
+        "timestamp": 1784593522.15194,
+        "action": "View_Case",
+        "user": "Dr. Test",
+        "details": "Viewed case X"
     }
 ]
