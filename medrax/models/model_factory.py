@@ -98,8 +98,9 @@ class ModelFactory:
         if env_key in os.environ:
             provider_kwargs["api_key"] = os.environ[env_key]
         else:
-            # Log warning but don't fail - the model class might handle missing API keys differently
-            print(f"Warning: Environment variable {env_key} not found. Authentication may fail.")
+            # Log warning and supply placeholder for local/offline initialization
+            print(f"Warning: Environment variable {env_key} not found. Using placeholder API key for system initialization.")
+            provider_kwargs["api_key"] = "sk-dummy-key-for-local-cdss-initialization"
 
         # Check for base_url if applicable
         if "base_url_key" in provider:
