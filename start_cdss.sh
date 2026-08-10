@@ -20,6 +20,9 @@ else
 fi
 echo ""
 
+# Free ports if previously in use
+fuser -k 8686/tcp 5173/tcp > /dev/null 2>&1
+
 # Start backend
 echo "[+] Starting Python FastAPI Backend on port 8686..."
 .venv/bin/python main.py &
