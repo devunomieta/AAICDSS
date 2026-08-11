@@ -326,13 +326,17 @@ async def generate_clinical_report(preds: str = Form(...), uncertainties: str = 
 
     findings_str = "\n".join(formatted_findings) if formatted_findings else "- No significant pathologies detected."
 
-    # Compute overall confidence and uncertainty metrics deterministically
-    avg_score = float(np.mean(list(preds_dict.values()))) if preds_dict else 0.0
-    avg_unc = float(np.mean(list(unc_dict.values()))) if unc_dict else 0.05
+    # Compute overall confidence and uncertainty metrics using Classification Ambiguity
+    # Ambiguity(p) = 1.0 - 2 * |p - 0.5| (peaks at 1.0 when score is borderline 0.5)
+    ambiguity_scores = [1.0 - (2.0 * abs(score - 0.5)) for score in preds_dict.values()] if preds_dict else [0.1]
+    avg_ambiguity = float(np.mean(ambiguity_scores))
     
-    confidence_pct = round((1.0 - min(avg_unc, 1.0)) * 100, 1)
-    uncertainty_pct = round(min(avg_unc, 1.0) * 100, 1)
-    uncertainty_level = "Low" if avg_unc < 0.05 else "Moderate" if avg_unc < 0.15 else "High"
+    model_unc = float(np.mean(list(unc_dict.values()))) if unc_dict else 0.0
+    combined_unc = min(1.0, max(avg_ambiguity, model_unc))
+    
+    uncertainty_pct = round(combined_unc * 100, 1)
+    confidence_pct = round((1.0 - combined_unc) * 100, 1)
+    uncertainty_level = "Low" if combined_unc < 0.25 else "Moderate" if combined_unc < 0.50 else "High"
 
     prompt = f"""You are an expert AI Radiologist for AffiongAI CDSS.
 Write a concise, professional clinical diagnostic report based on the pre-evaluated AI CNN findings and metrics below.
