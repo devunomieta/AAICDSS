@@ -133,6 +133,11 @@ class TorchXRayVisionClassifierTool(BaseTool):
             Exception: If there's an error processing the image or during classification.
         """
         try:
+            # Enforce strict determinism across runs
+            torch.manual_seed(42)
+            np.random.seed(42)
+            self.model.eval()
+
             img = self._process_image(image_path)
 
             # --- standard inference ---
@@ -140,8 +145,11 @@ class TorchXRayVisionClassifierTool(BaseTool):
                 preds = self.model(img).cpu()[0]
                 
             # --- MC Dropout for Uncertainty ---
-            # temporarily set model to train mode to enable dropout
-            self.model.train()
+            # Enable ONLY dropout layers to prevent mutating BatchNorm running statistics
+            torch.manual_seed(42)
+            for m in self.model.modules():
+                if isinstance(m, torch.nn.Dropout):
+                    m.train()
             mc_preds = []
             with torch.inference_mode():
                 for _ in range(5): # 5 passes for uncertainty estimation (optimized from 10)

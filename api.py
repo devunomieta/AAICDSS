@@ -303,11 +303,25 @@ async def generate_clinical_report(preds: str = Form(...), uncertainties: str = 
     except Exception:
         unc_dict = {}
 
-    # Format findings deterministically in Python
+    # Format findings deterministically using a 3-tier clinical threshold scale:
+    # - Confirmed (High Confidence): score >= 0.60
+    # - Indeterminate / Low Probability: 0.40 <= score < 0.60
+    # - Absent (Unlikely): score < 0.40
     formatted_findings = []
-    for cond, score in preds_dict.items():
-        status = "Confirmed" if score >= 0.50 else "Absent"
+    has_confirmed = False
+    
+    # Sort deterministically by score descending and take top 6
+    sorted_items = sorted(preds_dict.items(), key=lambda item: item[1], reverse=True)[:6]
+    
+    for cond, score in sorted_items:
         pct = round(score * 100, 1)
+        if score >= 0.60:
+            status = "Confirmed"
+            has_confirmed = True
+        elif score >= 0.40:
+            status = "Indeterminate (Borderline)"
+        else:
+            status = "Absent"
         formatted_findings.append(f"- **{cond}**: {status} ({pct}%)")
 
     findings_str = "\n".join(formatted_findings) if formatted_findings else "- No significant pathologies detected."
@@ -331,7 +345,7 @@ Measured Clinical Metrics:
 - Measured Uncertainty: {uncertainty_level} ({uncertainty_pct}%)
 
 Format the output in clean Markdown with:
-- **Primary Findings**: (List the pathologies with their exact Confirmed/Absent status and percentages as provided above)
+- **Primary Findings**: (List the pathologies with their exact status—Confirmed, Indeterminate (Borderline), or Absent—and percentages as provided above)
 - **Confidence & Uncertainty**: (Summarize confidence and uncertainty using the exact measured metrics above: {confidence_pct}% confidence, {uncertainty_level} uncertainty at {uncertainty_pct}%)
 - **Recommendation**: (Provide a 1-sentence clinical follow-up recommendation)
 
