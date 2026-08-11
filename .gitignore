@@ -218,3 +218,14 @@ docker-compose.yml
 web_platform/backend/Dockerfile
 web_platform/frontend/Dockerfile
 REPORTS/
+
+# Runtime data & feedback
+clinician_feedback.db*
+active_learning_feedback.json
+audit_logs.json
+uploads/
+
+# Frontend build outputs
+frontend/dev-dist/
+frontend/dist/
+
