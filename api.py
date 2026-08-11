@@ -292,32 +292,66 @@ async def infer_ct(file: UploadFile = File(...)):
 
 @app.post("/api/report")
 async def generate_clinical_report(preds: str = Form(...), uncertainties: str = Form(...), case_id: Optional[str] = Form(None)):
-    """Streams a clinical report from the local Ollama LLM."""
-    prompt = f"""
-    You are an expert AI Radiologist for AffiongAI CDSS. 
-    Based on the following AI CNN classification scores (0.0 to 1.0) and uncertainty variance, write a concise, professional clinical diagnostic report.
-    Target Pathologies to emphasize if present: Pneumonia, Tuberculosis (TB), Pleural Effusion.
+    """Streams a clinical report from the local Ollama LLM with deterministic sampling and exact metrics."""
+    try:
+        preds_dict = json.loads(preds)
+    except Exception:
+        preds_dict = {}
+        
+    try:
+        unc_dict = json.loads(uncertainties)
+    except Exception:
+        unc_dict = {}
+
+    # Format findings deterministically in Python
+    formatted_findings = []
+    for cond, score in preds_dict.items():
+        status = "Confirmed" if score >= 0.50 else "Absent"
+        pct = round(score * 100, 1)
+        formatted_findings.append(f"- **{cond}**: {status} ({pct}%)")
+
+    findings_str = "\n".join(formatted_findings) if formatted_findings else "- No significant pathologies detected."
+
+    # Compute overall confidence and uncertainty metrics deterministically
+    avg_score = float(np.mean(list(preds_dict.values()))) if preds_dict else 0.0
+    avg_unc = float(np.mean(list(unc_dict.values()))) if unc_dict else 0.05
     
-    Classification Scores:
-    {preds}
-    
-    Uncertainty Scores:
-    {uncertainties}
-    
-    Format the output in clean Markdown with:
-    - **Primary Findings**: (List the most likely diseases with Confirmed/Absent status)
-    - **Confidence & Uncertainty**: (Translate the variance into Low/Moderate/High Uncertainty AND include the exact estimated percentage values of Confidence and Uncertainty based on the scores)
-    - **Recommendation**: (Brief clinical recommendation)
-    
-    CRITICAL RULES:
-    1. Do not use introductory phrases such as "The primary findings from the AI radiological analysis suggest:" or similar preambles.
-    2. Start the recommendation directly. Do not use phrases like "Based on these findings,".
-    3. Do not output raw JSON, only the professional clinical text.
-    """
+    confidence_pct = round((1.0 - min(avg_unc, 1.0)) * 100, 1)
+    uncertainty_pct = round(min(avg_unc, 1.0) * 100, 1)
+    uncertainty_level = "Low" if avg_unc < 0.05 else "Moderate" if avg_unc < 0.15 else "High"
+
+    prompt = f"""You are an expert AI Radiologist for AffiongAI CDSS.
+Write a concise, professional clinical diagnostic report based on the pre-evaluated AI CNN findings and metrics below.
+
+Pre-evaluated Findings:
+{findings_str}
+
+Measured Clinical Metrics:
+- Measured Clinical Confidence: {confidence_pct}%
+- Measured Uncertainty: {uncertainty_level} ({uncertainty_pct}%)
+
+Format the output in clean Markdown with:
+- **Primary Findings**: (List the pathologies with their exact Confirmed/Absent status and percentages as provided above)
+- **Confidence & Uncertainty**: (Summarize confidence and uncertainty using the exact measured metrics above: {confidence_pct}% confidence, {uncertainty_level} uncertainty at {uncertainty_pct}%)
+- **Recommendation**: (Provide a 1-sentence clinical follow-up recommendation)
+
+CRITICAL RULES:
+1. Do not invent, hallucinate, or alter any percentage values or disease status. Use ONLY the exact values given above.
+2. Do not use introductory preambles. Start directly with the Markdown sections.
+3. Be 100% concise, accurate, and professional.
+"""
     
     def ollama_streamer():
         url = "http://localhost:11434/api/generate"
-        payload = {"model": "llama3", "prompt": prompt, "stream": True}
+        payload = {
+            "model": "llama3",
+            "prompt": prompt,
+            "stream": True,
+            "options": {
+                "temperature": 0.0,
+                "seed": 42
+            }
+        }
         reportText = ""
         try:
             response = requests.post(url, json=payload, stream=True)
@@ -337,6 +371,7 @@ async def generate_clinical_report(preds: str = Form(...), uncertainties: str = 
             yield f"\n\n[Error communicating with local LLM: {str(e)}]"
             
     return StreamingResponse(ollama_streamer(), media_type="text/event-stream")
+
 
 @app.post("/api/feedback")
 async def save_feedback(image_path: str = Form(...), prediction: str = Form(...), actual_decision: str = Form(...), user: str = Form(...)):
