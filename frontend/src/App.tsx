@@ -81,7 +81,7 @@ function Sidebar({ onLogout, userRole, isCollapsed, setIsCollapsed, isMobileMenu
         {userRole === 'radiologist' && (
           <Link to="/diagnostic" onClick={() => setIsMobileMenuOpen(false)} className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive('/diagnostic') ? 'bg-primary text-white' : 'text-textMuted hover:bg-surface hover:text-white'} ${isCollapsed ? 'justify-center mx-2' : 'gap-3 mx-4'}`}>
             <Activity size={20} className="shrink-0" />
-            {!isCollapsed && <span className="font-medium">Inference</span>}
+            {!isCollapsed && <span className="font-medium">CXR Triage Workstation</span>}
           </Link>
         )}
         <Link to="/cases" onClick={() => setIsMobileMenuOpen(false)} className={`flex items-center px-4 py-3 rounded-lg transition-colors ${isActive('/cases') ? 'bg-primary text-white' : 'text-textMuted hover:bg-surface hover:text-white'} ${isCollapsed ? 'justify-center mx-2' : 'gap-3 mx-4'}`}>

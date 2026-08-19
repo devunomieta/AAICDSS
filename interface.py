@@ -186,7 +186,7 @@ def create_demo(agent, tools_dict):
         # --- LOGIN PAGE ---
         with gr.Column(visible=True) as login_page:
             gr.Markdown("<h1 style='text-align: center; color: #3b82f6; margin-top: 100px; font-weight: 800; font-size: 3em;'>AffiongAI</h1>")
-            gr.Markdown("<p style='text-align: center; font-size: 1.2em; color: #9ca3af;'>Diagnostic Workstation</p>")
+            gr.Markdown("<p style='text-align: center; font-size: 1.2em; color: #9ca3af;'>CXR Triage Workstation</p>")
             
             with gr.Row():
                 with gr.Column(scale=1): pass
@@ -230,7 +230,7 @@ def create_demo(agent, tools_dict):
             with gr.Column(scale=4, elem_classes="main-content"):
                 with gr.Row():
                     with gr.Column(scale=4):
-                        gr.HTML("<h2 class='header-title'>Diagnostic Workstation</h2><p class='header-subtitle'>Radiology ID: DOCTOR_01</p>")
+                        gr.HTML("<h2 class='header-title'>CXR Triage Workstation</h2><p class='header-subtitle'>Radiology ID: DOCTOR_01</p>")
                     with gr.Column(scale=1):
                         analyze_btn = gr.Button("Start Inference", variant="primary", size="lg")
                 
@@ -243,14 +243,14 @@ def create_demo(agent, tools_dict):
                 with gr.Row():
                     review_image = gr.Image(interactive=False, label="Currently Viewing")
                     with gr.Column():
-                        gr.Markdown("### 📝 Thoracic AI Diagnostic Report")
+                        gr.Markdown("### 📝 Thoracic AI Triage-Support Report")
                         clinical_report_box = gr.Markdown("*Report will stream here...*", elem_classes="clinical-report")
                 
                 gr.Markdown("### Validation")
                 override_notes = gr.Textbox(label="Override Justification (Required if overriding)", lines=2)
                 with gr.Row():
-                    accept_btn = gr.Button("✅ Accept Diagnosis", variant="primary")
-                    override_btn = gr.Button("⚠️ Override Diagnosis", variant="stop")
+                    accept_btn = gr.Button("✅ Accept Triage Output", variant="primary")
+                    override_btn = gr.Button("⚠️ Override Triage Output", variant="stop")
                 feedback_status = gr.Markdown("")
 
             # --- RIGHT SIDEBAR ---
@@ -352,7 +352,7 @@ def create_demo(agent, tools_dict):
                     You are an expert AI Radiologist for AffiongAI CDSS. 
                     Based on the following AI CNN classification scores (0.0 to 1.0) and uncertainty variance (standard deviation), write a concise, professional clinical diagnostic report.
                     
-                    Target Pathologies to emphasize if present: Pneumonia, Tuberculosis (TB), Pleural Effusion.
+                    Target Pathologies to emphasize if present: Pneumonia, Tuberculosis (TB).
                     
                     Classification Scores:
                     {json.dumps(preds, indent=2)}
@@ -361,9 +361,9 @@ def create_demo(agent, tools_dict):
                     {json.dumps(top_uncertainties, indent=2)}
                     
                     Format the output in clean Markdown with:
-                    - **Primary Findings**: (List the most likely diseases with Confirmed/Absent status)
+                    - **Primary Findings**: (List the most likely diseases with Suggestive / Indeterminate / Low-confidence status)
                     - **Confidence & Uncertainty**: (Translate the variance into Low/Moderate/High Uncertainty)
-                    - **Target Pathology Focus**: (Explicitly mention Pneumonia, TB, and Pleural Effusion statuses)
+                    - **Target Pathology Focus**: (Explicitly mention Pneumonia and TB statuses)
                     - **Recommendation**: (Brief clinical recommendation)
                     
                     Do not output raw JSON, only the professional clinical text.

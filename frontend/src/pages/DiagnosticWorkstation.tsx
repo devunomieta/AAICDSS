@@ -373,14 +373,14 @@ export default function DiagnosticWorkstation() {
                 disabled={!activeItem.results?.ig_heatmap}
                 className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${heatmapView === 'ig' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-surface disabled:opacity-50 disabled:cursor-not-allowed'}`}
               >
-                IG Heatmap
+                Grad-CAM Heatmap
               </button>
               <button 
                 onClick={() => setHeatmapView('gradcam')}
                 disabled={!activeItem.results?.gradcam_heatmap}
                 className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${heatmapView === 'gradcam' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-surface disabled:opacity-50 disabled:cursor-not-allowed'}`}
               >
-                Grad-CAM
+                Grad-CAM (Layer Activation)
               </button>
             </div>
           )}
@@ -453,10 +453,10 @@ export default function DiagnosticWorkstation() {
           {!activeItem.validationStatus ? (
             <>
               <button onClick={() => handleValidation('accept')} className="bg-green-600 hover:bg-green-500 text-white px-6 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-lg shadow-green-900/20 transition-all hover:-translate-y-0.5">
-                <CheckCircle size={16} /> Accept Diagnosis
+                <CheckCircle size={16} /> Accept Triage Output
               </button>
               <button onClick={() => handleValidation('override')} className="bg-red-900/50 hover:bg-red-600 text-red-100 border border-red-800 hover:border-red-500 px-6 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-all hover:-translate-y-0.5">
-                <AlertTriangle size={16} /> Override
+                <AlertTriangle size={16} /> Override Triage Output
               </button>
             </>
           ) : (
@@ -567,10 +567,10 @@ export default function DiagnosticWorkstation() {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">Diagnostic Workstation</h1>
+          <h1 className="text-3xl font-bold text-white tracking-tight">CXR Triage Workstation</h1>
           <div className="flex items-center gap-4 mt-1">
             <p className="text-textMuted">
-              {isSessionActive ? `Active Session: ${sessionCaseId} (${sessionUploadType})` : "Batch Analysis & Clinical Reporting"}
+              {isSessionActive ? `Active Session: ${sessionCaseId} (${sessionUploadType})` : "Review historical CXR triage cases & Batch Processing"}
             </p>
             {isSessionActive && (
               <button 
@@ -691,7 +691,7 @@ export default function DiagnosticWorkstation() {
                       : 'bg-surface border-border hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed'
                 }`}
               >
-                {isProcessing ? 'Processing Queue...' : 'Run Diagnostic Pipeline'}
+                {isProcessing ? 'Processing Queue...' : 'Run CXR Triage Pipeline'}
               </button>
             )}
           </div>
@@ -703,7 +703,7 @@ export default function DiagnosticWorkstation() {
           {/* AI Report Box (Moved to Top) */}
           <div className="bg-background border border-border rounded-xl h-48 p-4 overflow-y-auto shrink-0 flex flex-col">
             <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-              <Activity size={16} /> AI Diagnostic Report
+              <Activity size={16} /> AI Triage-Support Report
             </h3>
             
             {activeItem?.status === 'completed' ? (

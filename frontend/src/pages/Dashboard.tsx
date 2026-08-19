@@ -87,23 +87,27 @@ export default function Dashboard() {
 
       <div className="flex-1 bg-background border border-border rounded-xl p-6 shadow-sm">
         <h2 className="text-lg font-bold text-white mb-6">Annual Scan Volume (2026)</h2>
-        <div className="h-64 flex items-end justify-between gap-2 border-b border-border pb-4 relative">
-          <div className="absolute left-0 top-0 h-full w-full flex flex-col justify-between border-l border-border pl-2 pb-4">
+        <div className="h-64 flex items-end justify-between gap-2 border-b border-border pb-4 relative pl-8 pt-6">
+          <div className="absolute left-0 top-0 h-full w-full flex flex-col justify-between border-l border-border pl-2 pb-4 pointer-events-none">
             <span className="text-xs text-textMuted">{maxVolume}</span>
             <span className="text-xs text-textMuted">{Math.round(maxVolume * 0.66)}</span>
             <span className="text-xs text-textMuted">{Math.round(maxVolume * 0.33)}</span>
+            <span className="text-xs text-textMuted">0</span>
           </div>
           
           {analytics.annual_volume.map((volume: number, i: number) => {
-            const heightPercentage = Math.max((volume / maxVolume) * 100, 1);
+            const heightPercentage = (volume / maxVolume) * 100;
             return (
-              <div key={i} className="w-full flex flex-col items-center gap-3 z-10">
+              <div key={i} className="w-full h-full flex flex-col justify-end items-center gap-2 z-10">
+                <span className="text-xs font-bold text-gray-300">
+                  {volume}
+                </span>
                 <div 
-                  className="w-12 bg-primary/20 hover:bg-primary/40 rounded-t-sm transition-colors border-t border-primary relative group cursor-pointer" 
-                  style={{ height: `${volume === 0 ? 0 : heightPercentage}%` }}
+                  className="w-full max-w-[40px] bg-gradient-to-t from-primary/20 via-primary/50 to-primary hover:from-primary/40 hover:to-blue-400 rounded-t transition-all border-t-2 border-primary-light relative group cursor-pointer shadow-md" 
+                  style={{ height: `${volume === 0 ? 4 : Math.max(heightPercentage, 6)}%` }}
                 >
-                  <div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-surface text-white text-xs px-2 py-1 rounded border border-border font-bold">
-                    {volume}
+                  <div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-surface text-white text-xs px-2 py-1 rounded border border-border font-bold shadow-lg pointer-events-none whitespace-nowrap z-20">
+                    {volume} Scans
                   </div>
                 </div>
                 <span className="text-xs font-semibold text-textMuted">

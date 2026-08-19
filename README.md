@@ -8,7 +8,7 @@
 <br>
 
 ## About AffiongAI
-AffiongAI is a next-generation Clinical Decision Support System (CDSS) built as an academic project. Designed specifically for radiologists and clinical environments, AffiongAI provides a highly intuitive and robust Diagnostic Workstation frontend that interfaces seamlessly with advanced medical reasoning engines. 
+AffiongAI is a next-generation Clinical Decision Support System (CDSS) built as an academic project. Designed specifically for radiologists and clinical environments, AffiongAI provides a highly intuitive and robust CXR Triage Workstation frontend that interfaces seamlessly with advanced medical reasoning engines. 
 
 AffiongAI is built on top of **MedRAX-2** (Medical Reasoning Agent for Chest X-ray), leveraging its powerful Multi-Modal Large Language Models and state-of-the-art CXR analysis tools. We have wrapped the MedRAX-2 engine in a production-ready, highly safeguarded clinical UI to improve practical radiologist workflows.
 
@@ -27,8 +27,8 @@ To transform the core reasoning models into a complete Clinical Decision Support
 
 ### UI/UX Improvements
 
-- **Diagnostic Workstation UI**: A complete custom React frontend built for high-efficiency clinical workflows, featuring drag-and-drop batch processing.
-- **Markdown Report Rendering**: The AI Diagnostic Reports are fully parsed with `react-markdown` and `remark-gfm` to elegantly display tables, clinical findings, and formatted text.
+- **CXR Triage Workstation UI**: A complete custom React frontend built for high-efficiency clinical workflows, featuring drag-and-drop batch processing.
+- **Markdown Report Rendering**: The AI Triage-Support Reports are fully parsed with `react-markdown` and `remark-gfm` to elegantly display tables, clinical findings, and formatted text.
 - **Auto-Resume & Session Persistence**: If the browser crashes or is accidentally closed, the session instantly auto-resumes from `localStorage`. Notifications clearly alert the user if any pending (un-uploaded) files were dropped during a crash.
 - **Clinical Safeguards**: Built-in validation safeguards prevent radiologists from ending a session or closing a case if there are unvalidated (neither Accepted nor Overridden) AI reports, ensuring compliance and a complete audit trail.
 - **Interactive Heatmap Legends**: Dynamic, context-aware legends automatically appear when toggling between Integrated Gradients (IG) and Grad-CAM heatmaps to help clinicians interpret model attention.
