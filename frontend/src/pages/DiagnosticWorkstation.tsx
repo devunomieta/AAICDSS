@@ -1,4 +1,4 @@
-import React, { useState, useRef, DragEvent } from 'react';
+import React, { useState, useRef, type DragEvent } from 'react';
 import { Upload, FileImage, AlertTriangle, CheckCircle, Brain, Activity, X, Maximize, Minimize } from 'lucide-react';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
@@ -86,7 +86,7 @@ export default function DiagnosticWorkstation() {
   }, []);
 
   React.useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: ReturnType<typeof setInterval>;
     if (isProcessing) {
       interval = setInterval(() => {
         setCurrentTime(Date.now());
