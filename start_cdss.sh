@@ -3,8 +3,10 @@ echo "=========================================="
 echo "   Starting AffiongAI Full-Stack System   "
 echo "=========================================="
 
-# Ensure PATH includes ~/.local/bin
-export PATH="$HOME/.local/bin:$PATH"
+# Ensure NVM and PATH prioritize updated Node version
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+export PATH="$HOME/.nvm/versions/node/v24.19.0/bin:$HOME/.local/bin:$PATH"
 
 # Check and start Ollama service if available
 if curl -s http://localhost:11434/api/tags > /dev/null 2>&1; then
