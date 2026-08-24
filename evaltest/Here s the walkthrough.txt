@@ -1,0 +1,66 @@
+Here's the walkthrough. Do this in the same project/IDE where your FastAPI backend already runs — not a separate environment, since one of the scripts needs to import your existing classifier code.
+
+**Step 1 — Open a terminal inside your project folder**
+
+In VS Code (or whatever IDE you're using), open a terminal and `cd` into the same folder your `api.py` / backend lives in — the one where you can already run your FastAPI server.
+
+**Step 2 — Confirm the Python packages are there**
+
+```
+pip show pandas scikit-learn matplotlib numpy
+```
+Your project already uses these (Table 3.1, §4.1.5), so this should just confirm versions, not install anything new. If any show "not found":
+```
+pip install pandas scikit-learn matplotlib numpy
+```
+
+**Step 3 — Save both scripts into your project**
+
+Put `generate_predictions.py` and `evaluate_affiongai_performance.py` in the same folder as your backend code (so `generate_predictions.py` can import your classifier without path headaches).
+
+**Step 4 — Find your labelled Nigerian test set**
+
+This is the dataset from §3.6.1 — locate the actual folder on your machine. Open it and check how it's organized: most Kaggle chest X-ray datasets are one folder per class (`Normal/`, `Pneumonia/`, `TB/`), each full of images. Note the exact folder names — you'll need them in Step 5.
+
+**Step 5 — Fill in the 3 TODOs in `generate_predictions.py`**
+
+Open the file and edit only these three spots:
+- **TODO 1** (top of file): the import for your existing classifier — copy whatever line your `api.py` already uses to load the classifier tool.
+- **TODO 2** (`TEST_SET_DIR` and `LABEL_FOLDER_MAP`): set `TEST_SET_DIR` to your test set's actual path, and rename the dictionary values to match your real folder names from Step 4.
+- **TODO 3** (`run_classifier_on_image`): replace the `raise NotImplementedError` with a call to whatever function your `/api/infer` route already calls — don't write new inference code, just reuse it. The docstring shows the shape of what typically goes here.
+
+Nothing else in the file needs to change.
+
+**Step 6 — Generate the CSV**
+
+```
+python generate_predictions.py
+```
+This prints one line per image as it goes (`img014.png: true=Pneumonia pred=Pneumonia`), and when it's done, writes `affiongai_test_predictions.csv` in that same folder. Open it and check it looks like this:
+
+```
+image_id,true_label,pred_label,prob_normal,prob_pneumonia,prob_tb
+img001.png,Normal,Normal,0.81,0.12,0.07
+img002.png,Pneumonia,Pneumonia,0.05,0.88,0.07
+img003.png,TB,Pneumonia,0.10,0.55,0.35
+```
+
+If it errors out immediately, it's almost always TODO 1 or TODO 3 — a wrong import path or a mismatch between what your classifier returns and what the function expects to return.
+
+**Step 7 — Run the evaluation script**
+
+```
+python evaluate_affiongai_performance.py --input affiongai_test_predictions.csv
+```
+
+**Step 8 — Check what it produced**
+
+In that folder you'll now have:
+- `table_5x_performance_summary.csv` — your Table 5.x
+- `figure_5x_confusion_matrix.png`
+- `figure_5y_roc_curves.png`
+- `figure_5z_literature_comparison.png` — your real accuracy plotted against Togunwa et al./CAD4TB/qXR
+
+The terminal also prints your overall accuracy and mean AUC directly — those are the two numbers that go into the `[X]` placeholders in the Conclusion text from the Feedback Response Pack.
+
+One thing worth flagging honestly: if your test set is small (the script will warn you under 10 images, but even 30–50 is still a pilot-scale sample), report it that way in your text — "preliminary, pilot-scale" — the same language your own thesis already uses for Togunwa et al.'s n=190 external test. That framing is more defensible than presenting a small sample as a definitive benchmark.

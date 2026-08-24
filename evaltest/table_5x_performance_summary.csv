@@ -1,0 +1,5 @@
+Class,Sensitivity (Recall),Specificity,Precision,F1-score,Support (n)
+Normal,0.933,0.81,0.711,0.807,150.0
+Pneumonia,0.0,0.943,0.0,0.0,150.0
+TB,0.6,0.513,0.381,0.466,150.0
+Overall Accuracy,,,,,0.511
