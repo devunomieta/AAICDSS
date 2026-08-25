@@ -51,7 +51,8 @@ async def upload_scans(case_id: str = Form(...), upload_type: str = Form(...), f
     
     saved_paths = []
     for file in files:
-        ext = os.path.splitext(file.filename)[1]
+        filename = file.filename or ""
+        ext = os.path.splitext(filename)[1]
         safe_path = os.path.join(str(UPLOAD_DIR), f"scan_{uuid.uuid4().hex}{ext}")
         with open(safe_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
@@ -185,8 +186,8 @@ async def run_inference(image_path: str = Form(...)):
 async def evaluate_system(file: UploadFile = File(...), target_disease: str = Form("Pneumonia"), threshold: float = Form(0.5)):
     """Evaluates the system using an uploaded CSV test dataset."""
     try:
-        # Save CSV to temp
-        ext = os.path.splitext(file.filename)[1]
+        filename = file.filename or ""
+        ext = os.path.splitext(filename)[1]
         csv_path = os.path.join(str(UPLOAD_DIR), f"eval_{uuid.uuid4().hex}{ext}")
         with open(csv_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
@@ -250,11 +251,17 @@ async def evaluate_system(file: UploadFile = File(...), target_disease: str = Fo
             return ece
             
         ece_score = compute_ece(y_true, y_scores)
-        
-        # Phase B: Explanation Fidelity (Simulated Deletion Metric)
-        # Assuming masking the heatmap areas reduces confidence by ~15-25%
-        fidelity_score = 0.82 + (np.random.rand() * 0.1) 
-        
+
+        # NOTE: An "Explanation Fidelity" metric previously lived here as
+        # 0.82 + (np.random.rand() * 0.1) -- a random number, not a real
+        # computation (it did not mask heatmap regions or measure any actual
+        # confidence drop, despite the removed comment claiming to). It has
+        # been removed rather than reported, to avoid ever returning a
+        # fabricated metric from a live endpoint. A genuine deletion-based
+        # fidelity metric (mask the Grad-CAM/IG region, re-run inference,
+        # measure the confidence drop) is a reasonable future addition, but
+        # is a real design decision -- not something to fake in the meantime.
+
         return {
             "status": "success",
             "samples_evaluated": len(y_true),
@@ -265,7 +272,6 @@ async def evaluate_system(file: UploadFile = File(...), target_disease: str = Fo
                 "F1_Score": round(f1, 4),
                 "Accuracy": round(acc, 4),
                 "ECE (Calibration)": round(ece_score, 4),
-                "Explanation Fidelity": round(fidelity_score, 4)
             }
         }
     except Exception as e:

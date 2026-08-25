@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Tuple, Type
+from typing import Any, Dict, Optional, Tuple, Type
 import os
 from pydantic import BaseModel, Field
 
@@ -51,20 +51,46 @@ class TorchXRayVisionClassifierTool(BaseTool):
         "Higher values indicate a higher likelihood of the condition being present."
     )
     args_schema: Type[BaseModel] = TorchXRayVisionInput
-    model: xrv.models.DenseNet = None
-    device: Optional[str] = "cuda"
-    transform: torchvision.transforms.Compose = None
+    model: Any = None
+    device: Any = "cuda"
+    transform: Any = None
+    mc_dropout_p: float = 0.3
 
     def __init__(
         self,
         model_name: str = "densenet121-res224-all",
         device: Optional[str] = "cuda",
         cache_dir: Optional[str] = None,
+        mc_dropout_p: float = 0.3,
     ):
         super().__init__()
         if cache_dir is None:
             cache_dir = os.getenv("TORCH_CACHE_DIR") or os.getenv("MODEL_CACHE_DIR")
         self.model = xrv.models.DenseNet(weights=model_name, cache_dir=cache_dir)
+
+        # --- MC Dropout retrofit ---
+        # The pretrained densenet121-res224-all weights contain no nn.Dropout layers
+        # anywhere in the architecture (verified: only Conv2d/BatchNorm2d/ReLU/Linear/
+        # pooling modules are present). Without this, the Monte Carlo Dropout sampling
+        # loop below (which toggles any nn.Dropout module to train() mode for 5 passes)
+        # has nothing to toggle, so every pass is identical and uncertainty_scores is
+        # always exactly zero for every pathology.
+        #
+        # Fix: insert a Dropout layer immediately before the final classifier. This is
+        # the standard way to retrofit MC Dropout into a model that was not trained with
+        # it (Gal & Ghahramani, 2016, "Dropout as a Bayesian Approximation"). In eval()
+        # mode (the default, used for the single deterministic prediction below),
+        # nn.Dropout is a no-op, so this does NOT change the primary classification
+        # output -- verified: predictions are bit-identical before and after this change
+        # across repeated eval-mode passes. It only introduces stochasticity during the
+        # explicit MC sampling passes, where dropout layers are deliberately set to
+        # train() mode.
+        self.mc_dropout_p = mc_dropout_p
+        self.model.classifier = torch.nn.Sequential(
+            torch.nn.Dropout(p=self.mc_dropout_p),
+            self.model.classifier,
+        )
+
         self.model.eval()
         self.device = torch.device(device) if device else "cuda"
         self.model = self.model.to(self.device)
@@ -106,7 +132,8 @@ class TorchXRayVisionClassifierTool(BaseTool):
         img = preprocess_medical_image(img, target_range=(-1024.0, 1024.0))
 
         img = img[None, :, :]
-        img = self.transform(img)
+        if self.transform is not None:
+            img = self.transform(img)
         img = torch.from_numpy(img).unsqueeze(0)
 
         img = img.to(self.device)
@@ -136,6 +163,8 @@ class TorchXRayVisionClassifierTool(BaseTool):
             # Enforce strict determinism across runs
             torch.manual_seed(42)
             np.random.seed(42)
+            if self.model is None:
+                raise ValueError("TorchXRayVisionClassifierTool model has not been initialized.")
             self.model.eval()
 
             img = self._process_image(image_path)
@@ -182,7 +211,8 @@ class TorchXRayVisionClassifierTool(BaseTool):
             orig_img = orig_img.resize((attr_np.shape[1], attr_np.shape[0]))
             orig_arr = np.array(orig_img) / 255.0
             
-            heatmap = cm.jet(attr_np)[:, :, :3]
+            cmap = plt.get_cmap("jet")
+            heatmap = np.asarray(cmap(attr_np))[:, :, :3]
             overlay = 0.5 * heatmap + 0.5 * np.stack((orig_arr,)*3, axis=-1)
             
             heatmap_dir = os.path.join(os.path.dirname(image_path), "heatmaps")
@@ -198,7 +228,7 @@ class TorchXRayVisionClassifierTool(BaseTool):
                 gc_attr = LayerAttribution.interpolate(gc_attr, attr_np.shape)
                 gc_attr_np = np.abs(gc_attr.squeeze().cpu().detach().numpy())
                 gc_attr_np = (gc_attr_np - np.min(gc_attr_np)) / (np.max(gc_attr_np) - np.min(gc_attr_np) + 1e-8)
-                gc_heatmap = cm.jet(gc_attr_np)[:, :, :3]
+                gc_heatmap = np.asarray(cmap(gc_attr_np))[:, :, :3]
                 gc_overlay = 0.5 * gc_heatmap + 0.5 * np.stack((orig_arr,)*3, axis=-1)
                 gc_heatmap_path = os.path.join(heatmap_dir, f"gc_{uuid.uuid4().hex}.png")
                 plt.imsave(gc_heatmap_path, gc_overlay)
@@ -221,10 +251,16 @@ class TorchXRayVisionClassifierTool(BaseTool):
             }
             return output, metadata
         except Exception as e:
-            return {"error": str(e)}, {
-                "image_path": image_path,
-                "analysis_status": "failed",
-            }
+            # Re-raise rather than returning an {"error": ...} dict shaped like a
+            # normal (pathology_name -> probability) output. The previous behaviour
+            # caused a confusing second failure: callers (e.g. api.py) iterate this
+            # return value expecting float predictions, so float("<the error text>")
+            # would raise a *different*, misleading ValueError that masked the real
+            # root cause (e.g. a missing dependency such as captum, or a corrupted
+            # image) behind "could not convert string to float: ...". Letting the
+            # original exception propagate lets the caller's own error handling
+            # report the actual cause.
+            raise
 
     async def _arun(
         self,
