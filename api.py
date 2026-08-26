@@ -439,8 +439,8 @@ async def approve_feedback(timestamp: float = Form(...)):
         
     found = False
     for item in data:
-        # Convert to float just in case it's passed as a string or slightly off
-        if abs(float(item.get("timestamp", 0)) - float(timestamp)) < 0.001:
+        # Convert item's timestamp to float just in case it's stored as a string or number
+        if abs(float(item.get("timestamp", 0)) - timestamp) < 0.001:
             item["status"] = "Retraining Ready"
             found = True
             break
