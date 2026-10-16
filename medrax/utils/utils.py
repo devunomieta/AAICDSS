@@ -7,26 +7,23 @@ from typing import Dict, List, Tuple
 def preprocess_medical_image(
     image: np.ndarray, 
     target_range: Tuple[float, float] = (0.0, 1.0),
-    clip_values: bool = True
+    clip_values: bool = True,
+    zero_anchored: bool = True
 ) -> np.ndarray:
     """
     Preprocess medical images by auto-detecting bit depth and normalizing appropriately.
     
-    This function handles both 8-bit (0-255) and 16-bit (0-65535) images automatically,
-    normalizing them to the target range. It's designed for medical imaging tools that
-    expect consistent input ranges regardless of the original image bit depth.
+    Handles 8-bit (0-255), 10-bit (0-1023), 12-bit (0-4095), and 16-bit (0-65535) images,
+    preserving anatomical radiodensity without erratic contrast shifts.
     
     Args:
         image (np.ndarray): Input image array (2D or 3D)
         target_range (Tuple[float, float]): Target range for normalization (default: (0.0, 1.0))
         clip_values (bool): Whether to clip values to target range (default: True)
+        zero_anchored (bool): When True and min_val >= 0, preserves zero baseline (default: True)
     
     Returns:
         np.ndarray: Normalized image in the target range
-        
-    Raises:
-        ValueError: If image is empty or has invalid values
-        ValueError: If target_range is invalid
     """
     if image.size == 0:
         raise ValueError("Input image is empty")
@@ -37,37 +34,43 @@ def preprocess_medical_image(
     # Convert to float for processing
     image = image.astype(np.float32)
     
-    # Auto-detect bit depth based on maximum value
-    max_val = np.max(image)
-    min_val = np.min(image)
+    max_val = float(np.max(image))
+    min_val = float(np.min(image))
     
-    # Determine the expected maximum value based on bit depth
-    if max_val <= 255:
-        # 8-bit image
+    # Check if already normalized to target range or [-1024, 1024]
+    if min_val >= target_range[0] - 1e-4 and max_val <= target_range[1] + 1e-4:
+        return image
+    
+    # Detect bit depth threshold safely based on dtype and intensity bounds
+    if getattr(image, "dtype", None) == np.uint8 or max_val <= 255.0:
         expected_max = 255.0
-    elif max_val <= 65535:
-        # 16-bit image
-        expected_max = 65535.0
+    elif max_val <= 1023.0:
+        expected_max = 1023.0  # 10-bit medical display / sensor
+    elif max_val <= 4095.0:
+        expected_max = 4095.0  # 12-bit standard DICOM sensor
+    elif max_val <= 65535.0:
+        expected_max = 65535.0 # 16-bit DICOM / TIFF
     else:
-        # Higher bit depth or already normalized, use actual max
         expected_max = max_val
-    
-    # Normalize to 0-1 range first
-    if expected_max > 0:
-        image = (image - min_val) / (expected_max - min_val)
+
+    # Determine baseline floor
+    baseline_min = 0.0 if (zero_anchored and min_val >= 0.0) else min_val
+    val_range = expected_max - baseline_min
+
+    # Normalize to [0, 1] range first
+    if val_range > 0:
+        norm_img = (image - baseline_min) / val_range
     else:
-        # Handle edge case where image has no contrast
-        image = np.zeros_like(image)
+        norm_img = np.zeros_like(image)
     
-    # Scale to target range
+    # Scale to target range: e.g. (-1024, 1024) or (0, 1)
     target_min, target_max = target_range
-    image = image * (target_max - target_min) + target_min
+    scaled_img = norm_img * (target_max - target_min) + target_min
     
-    # Clip values if requested
     if clip_values:
-        image = np.clip(image, target_min, target_max)
+        scaled_img = np.clip(scaled_img, target_min, target_max)
     
-    return image
+    return scaled_img
 
 
 def load_prompts_from_file(file_path: str) -> Dict[str, str]:

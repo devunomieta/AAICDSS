@@ -46,16 +46,30 @@ async def init_case(case_id: str = Form(...), upload_type: str = Form(...)):
 
 @app.post("/api/upload")
 async def upload_scans(case_id: str = Form(...), upload_type: str = Form(...), files: List[UploadFile] = File(...)):
-    """Receives batch uploads and saves them to the temp directory."""
+    """Receives batch uploads, converts DICOM if needed, and saves them to the upload directory."""
     create_case(case_id, upload_type)
     
     saved_paths = []
     for file in files:
         filename = file.filename or ""
-        ext = os.path.splitext(filename)[1]
+        ext = os.path.splitext(filename)[1].lower()
         safe_path = os.path.join(str(UPLOAD_DIR), f"scan_{uuid.uuid4().hex}{ext}")
         with open(safe_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
+
+        # Automatic DICOM conversion if uploaded
+        if ext in [".dcm", ".dicom"]:
+            try:
+                dicom_tool = TOOLS_DICT.get("DicomProcessorTool")
+                if not dicom_tool:
+                    from medrax.tools.dicom import DicomProcessorTool
+                    dicom_tool = DicomProcessorTool(temp_dir=str(UPLOAD_DIR))
+                res, _ = dicom_tool._run(safe_path)
+                if isinstance(res, dict) and "image_path" in res and os.path.exists(res["image_path"]):
+                    safe_path = res["image_path"]
+            except Exception as dcm_err:
+                print(f"DICOM conversion error for {safe_path}: {dcm_err}")
+
         saved_paths.append(safe_path)
     
     # Update cases with the images
@@ -152,6 +166,27 @@ async def run_inference(image_path: str = Form(...)):
         return {"error": "TorchXRayVisionClassifierTool not loaded"}
         
     try:
+        # Resolve relative image path if needed
+        if not os.path.exists(image_path):
+            alt_path = os.path.join(str(UPLOAD_DIR), os.path.basename(image_path))
+            if os.path.exists(alt_path):
+                image_path = alt_path
+            else:
+                return {"error": f"Image file not found: {image_path}"}
+
+        # Convert DICOM if sent directly to infer
+        if image_path.lower().endswith((".dcm", ".dicom")):
+            try:
+                dicom_tool = TOOLS_DICT.get("DicomProcessorTool")
+                if not dicom_tool:
+                    from medrax.tools.dicom import DicomProcessorTool
+                    dicom_tool = DicomProcessorTool(temp_dir=str(UPLOAD_DIR))
+                res, _ = dicom_tool._run(image_path)
+                if isinstance(res, dict) and "image_path" in res and os.path.exists(res["image_path"]):
+                    image_path = res["image_path"]
+            except Exception as dcm_err:
+                print(f"DICOM conversion error in run_inference: {dcm_err}")
+
         out, meta = classifier._run(image_path)
         
         # Cast float32 to float for JSON serialization

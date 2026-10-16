@@ -150,7 +150,11 @@ def query_ollama(prompt):
     payload = {
         "model": "llama3",
         "prompt": prompt,
-        "stream": True
+        "stream": True,
+        "options": {
+            "temperature": 0.0,
+            "seed": 42
+        }
     }
     try:
         response = requests.post(url, json=payload, stream=True)

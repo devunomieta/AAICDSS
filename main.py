@@ -180,7 +180,7 @@ def initialize_agent(
     # Initialize only selected tools or all if none specified (restricted to 8GB RAM allowed set)
     tools_dict: Dict[str, BaseTool] = {}
 
-    allowed_tools = {"ImageVisualizerTool", "TorchXRayVisionClassifierTool"}
+    allowed_tools = {"ImageVisualizerTool", "TorchXRayVisionClassifierTool", "DicomProcessorTool"}
     if tools_to_use is None:
         tools_to_use = list(allowed_tools)
     else:
@@ -382,13 +382,14 @@ if __name__ == "__main__":
     # Configure tools based on arguments
     if args.tools is not None:
         # Use tools specified via command line, but filter them for 8GB RAM optimization
-        allowed_tools = {"ImageVisualizerTool", "TorchXRayVisionClassifierTool"}
+        allowed_tools = {"ImageVisualizerTool", "TorchXRayVisionClassifierTool", "DicomProcessorTool"}
         selected_tools = [t for t in args.tools if t in allowed_tools]
     else:
         # Use default tools selection (optimized for 8GB offline run)
         selected_tools = [
             "ImageVisualizerTool",
             "TorchXRayVisionClassifierTool",
+            "DicomProcessorTool",
         ]
 
     # Configure model directory and device

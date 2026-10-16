@@ -41,10 +41,11 @@ class DicomProcessorTool(BaseTool):
 
     def _apply_windowing(self, img: np.ndarray, center: float, width: float) -> np.ndarray:
         """Apply window/level adjustment to the image."""
-        img_min = center - width // 2
-        img_max = center + width // 2
+        width = max(float(width), 1.0)
+        img_min = center - (width / 2.0)
+        img_max = center + (width / 2.0)
         img = np.clip(img, img_min, img_max)
-        img = ((img - img_min) / (width) * 255).astype(np.uint8)
+        img = ((img - img_min) / width * 255.0).astype(np.uint8)
         return img
 
     def _process_dicom(
@@ -57,26 +58,35 @@ class DicomProcessorTool(BaseTool):
         dcm = pydicom.dcmread(dicom_path)
         img = dcm.pixel_array.astype(float)
 
-        # Apply manufacturer's recommended windowing if available and not overridden
-        if window_center is None and hasattr(dcm, "WindowCenter"):
-            window_center = dcm.WindowCenter
-            if isinstance(window_center, list):
-                window_center = window_center[0]
-
-        if window_width is None and hasattr(dcm, "WindowWidth"):
-            window_width = dcm.WindowWidth
-            if isinstance(window_width, list):
-                window_width = window_width[0]
-
         # Apply rescale slope/intercept if available
         if hasattr(dcm, "RescaleSlope") and hasattr(dcm, "RescaleIntercept"):
-            img = img * dcm.RescaleSlope + dcm.RescaleIntercept
+            img = img * float(dcm.RescaleSlope) + float(dcm.RescaleIntercept)
+
+        # Invert MONOCHROME1 to standard MONOCHROME2 if needed
+        # MONOCHROME1: 0 is white, max is black
+        # MONOCHROME2: 0 is black, max is white (standard CXR)
+        photometric = getattr(dcm, "PhotometricInterpretation", "MONOCHROME2")
+        if photometric == "MONOCHROME1":
+            img = np.amax(img) - img
+
+        # Apply manufacturer's recommended windowing if available and not overridden
+        if window_center is None and hasattr(dcm, "WindowCenter"):
+            wc = dcm.WindowCenter
+            window_center = float(wc[0]) if isinstance(wc, (list, pydicom.multival.MultiValue)) else float(wc)
+
+        if window_width is None and hasattr(dcm, "WindowWidth"):
+            ww = dcm.WindowWidth
+            window_width = float(ww[0]) if isinstance(ww, (list, pydicom.multival.MultiValue)) else float(ww)
 
         # Apply windowing if parameters are available
-        if window_center is not None and window_width is not None:
+        if window_center is not None and window_width is not None and window_width > 0:
             img = self._apply_windowing(img, window_center, window_width)
         else:
-            img = ((img - img.min()) / (img.max() - img.min()) * 255).astype(np.uint8)
+            img_min, img_max = img.min(), img.max()
+            if img_max > img_min:
+                img = ((img - img_min) / (img_max - img_min) * 255.0).astype(np.uint8)
+            else:
+                img = np.zeros_like(img, dtype=np.uint8)
 
         metadata = {
             "PatientID": getattr(dcm, "PatientID", None),
