@@ -37,9 +37,13 @@ def preprocess_medical_image(
     max_val = float(np.max(image))
     min_val = float(np.min(image))
     
-    # Check if already normalized to target range or [-1024, 1024]
-    if min_val >= target_range[0] - 1e-4 and max_val <= target_range[1] + 1e-4:
-        return image
+    # Check if already normalized to target range
+    if target_range == (-1024.0, 1024.0):
+        if min_val <= -200.0 and max_val <= 1025.0:
+            return image
+    elif target_range == (0.0, 1.0):
+        if min_val >= 0.0 and max_val <= 1.0:
+            return image
     
     # Detect bit depth threshold safely based on dtype and intensity bounds
     if getattr(image, "dtype", None) == np.uint8 or max_val <= 255.0:
