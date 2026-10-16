@@ -25,7 +25,7 @@ interface DeletedCaseRecord {
 }
 
 interface Props {
-  userRole?: 'radiologist' | 'compliance' | null;
+  userRole?: 'radiologist' | 'compliance' | 'admin' | null;
   userName?: string;
 }
 
@@ -83,8 +83,8 @@ export default function CaseRecords({ userRole, userName }: Props) {
   const handleDelete = async () => {
     if (!caseToDelete || !userRole || !userName) return;
     
-    // Validate reason if compliance is deleting a non-pending case
-    if (userRole === 'compliance' && !deleteReason.trim()) {
+    // Validate reason if compliance or admin is deleting a non-pending case
+    if ((userRole === 'compliance' || userRole === 'admin') && caseToDelete.status !== 'pending' && !deleteReason.trim()) {
       showToast("Please provide a reason for deletion.", 'error');
       return;
     }
@@ -151,7 +151,7 @@ export default function CaseRecords({ userRole, userName }: Props) {
               This action will permanently remove the case and its clinical report from the active records. It will be archived in the deletion history.
             </p>
             
-            {userRole === 'compliance' && caseToDelete.status !== 'pending' && (
+            {(userRole === 'compliance' || userRole === 'admin') && caseToDelete.status !== 'pending' && (
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-300 mb-2">Reason for Deletion <span className="text-red-400">*</span></label>
                 <textarea 
@@ -335,7 +335,7 @@ export default function CaseRecords({ userRole, userName }: Props) {
                 </tr>
               ) : activeTab === 'active' ? (
                 (paginatedList as CaseRecord[]).map(c => {
-                  const canDelete = c.status === 'pending' || userRole === 'compliance';
+                  const canDelete = c.status === 'pending' || userRole === 'compliance' || userRole === 'admin';
                   return (
                     <tr 
                       key={c.id} 

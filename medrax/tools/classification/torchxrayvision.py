@@ -1,5 +1,6 @@
 from typing import Any, Dict, Optional, Tuple, Type
 import os
+import gc
 import threading
 from pydantic import BaseModel, Field
 
@@ -280,6 +281,19 @@ class TorchXRayVisionClassifierTool(BaseTool):
                 # original exception propagate lets the caller's own error handling
                 # report the actual cause.
                 raise
+            finally:
+                plt.close('all')
+                if 'attr' in locals():
+                    del attr
+                if 'gc_attr' in locals():
+                    del gc_attr
+                if 'img' in locals():
+                    del img
+                if 'mc_preds' in locals():
+                    del mc_preds
+                gc.collect()
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
 
     async def _arun(
         self,

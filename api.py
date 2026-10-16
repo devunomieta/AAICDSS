@@ -4,6 +4,8 @@ import shutil
 import json
 import uuid
 import requests
+import gc
+import torch
 from pathlib import Path
 from fastapi import FastAPI, File, UploadFile, Form, BackgroundTasks
 from fastapi.responses import StreamingResponse, JSONResponse
@@ -205,6 +207,11 @@ async def run_inference(image_path: str = Form(...)):
             upper = min(1.0, v + (1.96 * u))
             conformal_sets[k] = [round(lower, 4), round(upper, 4)]
         
+        # Explicit garbage collection to prevent memory leaks during batch loops
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
         return {
             "status": "success",
             "predictions": preds,
@@ -403,7 +410,7 @@ CRITICAL RULES:
     def ollama_streamer():
         url = "http://localhost:11434/api/generate"
         payload = {
-            "model": "llama3",
+            "model": "llama3.2:3b",
             "prompt": prompt,
             "stream": True,
             "options": {
@@ -428,6 +435,10 @@ CRITICAL RULES:
                     
         except Exception as e:
             yield f"\n\n[Error communicating with local LLM: {str(e)}]"
+        finally:
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
             
     return StreamingResponse(ollama_streamer(), media_type="text/event-stream")
 
