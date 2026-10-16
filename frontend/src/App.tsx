@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { Activity, BarChart2, Database, MessageSquare, Settings, Bell, LogOut, Info, ChevronLeft, ChevronRight, FolderClock, Users, Menu, X } from 'lucide-react';
+import { Activity, BarChart2, Database, MessageSquare, Settings, LogOut, ChevronLeft, ChevronRight, FolderClock, Menu, X } from 'lucide-react';
 import axios from 'axios';
 import aIcon from './assets/A-Icon.png';
 import { useToast } from './components/ToastContext';
