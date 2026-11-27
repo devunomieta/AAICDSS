@@ -230,6 +230,6 @@ frontend/dev-dist/
 frontend/dist/
 
 #ResearchDoc Folder
-ResearchFolder/ 
+#ResearchFolder/ 
 
-demo/dataset/
+#demo/dataset/

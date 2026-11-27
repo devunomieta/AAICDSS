@@ -2,7 +2,7 @@
 Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host "   Starting AffiongAI Full-Stack System   " -ForegroundColor Cyan
 Write-Host "==========================================" -ForegroundColor Cyan
-Write-Host "Note: Ensure 'ollama run llama3' is already running in the background." -ForegroundColor Yellow
+Write-Host "Note: Ensure Ollama is running ('ollama serve') and 'ollama pull llama3.2:3b' has been downloaded." -ForegroundColor Yellow
 
 # Function to start the FastAPI Python Backend
 $backendJob = Start-Job -ScriptBlock {

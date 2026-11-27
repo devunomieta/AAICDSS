@@ -38,6 +38,72 @@ To transform the core reasoning models into a complete Clinical Decision Support
 
 ---
 
+## Fresh-PC Setup & Launch Guide
+
+### Prerequisites
+- **Python 3.11 or 3.12** (recommended: `3.12.x`)
+- **Node.js 20+** and **npm**
+- **[Ollama](https://ollama.com/)** installed locally for offline clinical report generation
+
+### 1. Clone the Repository
+```bash
+git clone https://github.com/devunomieta/AAICDSS.git
+cd AAICDSS
+```
+
+### 2. Set Up the Python Backend
+**Linux / macOS:**
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements-cdss.txt
+```
+
+**Windows (PowerShell):**
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install --upgrade pip
+pip install -r requirements-cdss.txt
+```
+
+> **Note:** On first launch, `TorchXRayVision` will automatically download the pretrained `densenet121-res224-all` weights (~30 MB) into `~/.torchxrayvision/models_data/`. Internet is required once for this download; after that, inference works completely offline. No `.env` or OpenAI API key is required for local CDSS operation.
+
+### 3. Set Up the React Frontend
+```bash
+cd frontend
+npm install
+cd ..
+```
+
+### 4. Pull the Local Ollama Model
+```bash
+ollama pull llama3.2:3b
+```
+*(Note: `api.py` uses `llama3.2:3b` for live report streaming. If you also want to re-run `measure_llm_stage.py`, pull `llama3` as well.)*
+
+### 5. Launch the Full-Stack Application
+Ensure Ollama is running (`ollama serve`), then run from the project root:
+
+- **Linux / macOS:** `./start_cdss.sh`
+- **Windows (PowerShell):** `.\start_cdss.ps1`
+
+Once running:
+- **React Triage Workstation UI:** `http://localhost:5173`
+- **FastAPI Backend & Swagger Docs:** `http://localhost:8686/docs`
+
+### 6. Run Automated Tests
+```bash
+# Backend (PyTest with live TorchXRayVision model)
+.venv/bin/pytest test_backend.py        # Windows: .\.venv\Scripts\pytest test_backend.py
+
+# Frontend (Vitest)
+cd frontend && npx vitest run
+```
+
+---
+
 ## Under the Hood: MedRAX-2
 AffiongAI is proudly powered by **MedRAX**. MedRAX is the first versatile AI agent that seamlessly integrates state-of-the-art CXR analysis tools and multimodal large language models into a unified framework.
 

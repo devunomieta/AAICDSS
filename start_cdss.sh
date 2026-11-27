@@ -18,7 +18,7 @@ elif command -v ollama > /dev/null 2>&1; then
     sleep 2
     echo "[+] Ollama started on port 11434."
 else
-    echo "[!] Notice: Ollama binary not found. Start 'ollama run llama3' if you need AI Report Generation."
+    echo "[!] Notice: Ollama binary not found. Install Ollama and run 'ollama pull llama3.2:3b' if you need AI Report Generation."
 fi
 echo ""
 
